@@ -2885,13 +2885,20 @@ function promoExtractCashablePMH(km){
       const beforeHoac=p.slice(0,hoacIdx), afterHoac=p.slice(hoacIdx);
       const faceM=new RegExp(FACE_RE,'i').exec(beforeHoac); if(faceM)faceVal=promoMoneyToNumber(faceM[1],faceM[2]);
       const directM=new RegExp(DIRECT_RE,'i').exec(afterHoac); if(directM)directVal=promoMoneyToNumber(directM[1],directM[2]);
+
+      // Nếu thứ tự là "Giảm X hoặc tặng PMH Y", khoản được trừ vẫn là X.
+      // Chỉ tìm ở đúng từng vế để không bắt nhầm chữ "trừ" trong phần loại trừ của PMH.
+      if(!directVal){
+        const directBefore=new RegExp(DIRECT_RE,'i').exec(beforeHoac);
+        if(directBefore)directVal=promoMoneyToNumber(directBefore[1],directBefore[2]);
+      }
     }
     if(!directVal){const direct=new RegExp(DIRECT_RE,'i').exec(p); if(direct)directVal=promoMoneyToNumber(direct[1],direct[2]);}
     if(!faceVal){const face=new RegExp(FACE_RE,'i').exec(p); if(face)faceVal=promoMoneyToNumber(face[1],face[2]);}
-    // "Giảm X hoặc tặng PMH trị giá Y": đây là 2 lựa chọn thay thế nhau, khách chỉ được 1.
-    // Lấy giá trị THẤP HƠN thay vì mặc định lấy mệnh giá PMH.
+    // PMH Y hoặc Giảm X: đây là 2 lựa chọn thay thế nhau.
+    // Giá cuối luôn dùng đúng X gắn với phương án Giảm, tuyệt đối không dùng mệnh giá PMH Y.
     let val;
-    if(directVal>0 && faceVal>0 && directVal!==faceVal && hasChoice(p)) val=Math.min(directVal,faceVal);
+    if(directVal>0 && hasChoice(p)) val=directVal;
     else val=directVal>0?directVal:faceVal;
     if(val>0) total+=val;
   }
@@ -3079,10 +3086,11 @@ function promoFinalInfo(r){
         }
         // "Giảm X hoặc tặng PMH trị giá Y": 2 lựa chọn thay thế nhau, khách chỉ được 1 -> lấy giá trị thấp hơn.
         let v, label='PMH/Voucher';
-        if(vDirect>0 && vFace>0 && vDirect!==vFace && /hoac/.test(p)){
-          v=Math.min(vDirect,vFace);
-          // Ghi rõ đây là lựa chọn tiền mặt/PMH (không lấy nhầm giá trị PMH cao hơn), để không hiểu lầm số hiển thị là mệnh giá PMH.
-          label = v===vDirect ? `Giảm tiền (không lấy PMH ${fmtMoney(vFace)})` : `PMH (không lấy giảm ${fmtMoney(vDirect)})`;
+        if(vDirect>0 && /hoac/.test(p)){
+          // Khi có "hoặc", luôn lấy đúng số tiền đi với phương án Giảm;
+          // mệnh giá PMH chỉ dùng để mô tả lựa chọn còn lại, không được trừ vào Giá cuối.
+          v=vDirect;
+          label = vFace>0 ? `Giảm tiền (không lấy PMH ${fmtMoney(vFace)})` : 'Giảm tiền';
         } else {
           v=vDirect>0?vDirect:vFace;
         }
