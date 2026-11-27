@@ -15,10 +15,42 @@ export function group(rows,map=mapping){let products={},names=new Set(),count=0,
  const ps=Object.values(products);return {products,stats:{rows:count+invalid.length,codes:ps.length,names:names.size,duplicates:ps.reduce((n,p)=>n+p.variants.reduce((t,x)=>t+x.rows.length-1,0),0),missingS:ps.filter(p=>p.variants.some(x=>x.v.s==null)).length,missingU:ps.filter(p=>p.variants.some(x=>x.v.u==null)).length,conflicts:ps.filter(p=>p.issues.length).length,invalid}}}
 export const value=p=>p.variants[0].v;
 export function confirmPrice(p,price,condition,reason,at=new Date().toISOString()){if(p.issues.length||money(price)==null||!reason.trim())throw Error('Kiểm tra giá, xung đột và lý do xác nhận.');p.history.push({price:money(price),condition,reason,at,source:'Quản lý xác nhận'})}
-export function quote(p){const last=p.history.at(-1);if(p.issues.length)return {label:'Cần kiểm tra',price:null,condition:''};return last?{label:'Giá cuối',...last}:{label:'Giá trên tem',price:value(p).u,condition:offers(value(p).promo).filter(o=>o.tags.some(t=>['Tặng quà','Phiếu mua hàng'].includes(t))).map(o=>o.source).join('\n')}}
+function approvedDiscount(entries) {
+  const candidates=[];
+  for(const {source} of entries){
+    const line=fold(source).replace(/\s+/g,' ');
+    if(!/giam.*%/.test(line))continue;
+    const match=line.match(/^giam( them)? (\d+(?:[.,]\d+)?)\s*% tren gia sau khuyen mai(?:\s*\(khong ap dung udnv\))?[.!]?$/);
+    if(!match)return null;
+    const rate=Number(match[2].replace(',','.'));
+    if(rate<=0||rate>100)return null;
+    candidates.push({rate,extra:Boolean(match[1]),source});
+  }
+  if(candidates.length===1)return candidates[0];
+  const extra=candidates.filter(c=>c.extra);
+  if(extra.length===1 && candidates.length===2 && candidates.some(c=>!c.extra && c.rate===3))return extra[0];
+  return null;
+}
+
+export function quote(p) {
+  if(p.issues.length)return {label:'Cần kiểm tra',price:null,condition:''};
+  const last=p.history.at(-1);
+  if(last)return {label:'Giá cuối',...last};
+  const v=value(p), entries=offers(v.promo);
+  const benefits=entries.filter(o=>o.tags.some(t=>['Tặng quà','Phiếu mua hàng'].includes(t))).map(o=>o.source);
+  const discount=approvedDiscount(entries);
+  if(!p.recheck && v.u!=null && discount){
+    const price=trial(v.u,discount.rate);
+    return {label:'Giá cuối',price,source:'Quy tắc giảm giá đã duyệt',rate:discount.rate,
+      reason:fmt(v.u)+' × '+(100-discount.rate)+'% = '+fmt(price),
+      condition:[discount.source,...benefits].join('\n')};
+  }
+  return {label:'Giá trên tem',price:v.u,condition:benefits.join('\n')};
+}
+export const hasFinal=p=>quote(p).label==='Giá cuối';
 export function message(p,session,scope,staff=false){const q=quote(p);if(q.price==null)return '';return [value(p).name,q.label+': '+fmt(q.price),q.condition,staff&&('Mã '+p.code+' · '+scope+' · '+session.date),staff&&(session.name+' · '+session.file+' · '+(q.source||'Cột U')),staff&&q.reason].filter(Boolean).join('\n')}
 export const trial=(u,rate)=>u==null?null:Math.round(u*(100-rate)/100);
-export const needs=p=>p.issues.length||value(p).u==null||value(p).s!=null&&value(p).u>value(p).s||!p.history.length&&(p.recheck||offers(value(p).promo).some(o=>o.rate!=null));
+export const needs=p=>p.issues.length||value(p).u==null||value(p).s!=null&&value(p).u>value(p).s||!hasFinal(p)&&(p.recheck||offers(value(p).promo).some(o=>o.rate!=null));
 export const duplicate=(sessions,s)=>sessions.some(t=>['hash','date','scope'].every(k=>s[k]===t[k]));
 export function compare(a,b){if(a.scope!==b.scope)throw Error('Hai phiên phải cùng phạm vi.');let changes=[];for(const code of new Set([...Object.keys(a.products),...Object.keys(b.products)])){let old=a.products[code],next=b.products[code];let x=old?value(old):{},y=next?value(next):{};let delta=x.u!=null&&y.u!=null?y.u-x.u:null;let kind=!old?'Mã mới':!next?'Mã vắng':old.issues.length||next.issues.length?'Xung đột':x.u!==y.u?(delta==null?'Thay đổi giá thiếu':delta>0?'Tăng giá':'Giảm giá'):JSON.stringify(lines(x.promo))!==JSON.stringify(lines(y.promo))?'Đổi khuyến mãi':x.s!==y.s?'Đổi giá đối chiếu':'';if(kind)changes.push({code,kind,x,y,delta,pct:x.u?delta==null?null:delta/x.u*100:null})}return changes}
 
