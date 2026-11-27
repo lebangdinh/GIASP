@@ -11,7 +11,7 @@ const icon=(id,size=19)=>'<svg aria-hidden="true" width="'+size+'" height="'+siz
 paths.overview='M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z';
 let workMode='';
 paths.advanced=paths.overview;
-const nav={overview:'Tổng quan',advanced:'Nghiệp vụ nâng cao',search:'Tra giá tại quầy',import:'Nhập bảng giá',history:'Lịch sử phiên',report:'Phân tích giá',news:'Bản tin cho shop',print:'In tem sản phẩm',shops:'Quản lý cụm'};
+const nav={overview:'Tổng quan',search:'Tra giá tại quầy',import:'Nhập bảng giá',history:'Lịch sử phiên',report:'Phân tích giá',advanced:'Nghiệp vụ nâng cao',news:'Bản tin cho shop',print:'In tem sản phẩm',shops:'Quản lý cụm'};
 const names={name:'Tên sản phẩm',badge1:'Đặc',badge2:'Quyền',ref:'Mã tham chiếu',time:'Giá trị F gốc',code:'Mã sản phẩm',promo:'Khuyến mãi',spec:'Thông số',labels:'Chỉ tiêu trả chậm',values1:'Số liệu đối tác 1',partner1:'Đối tác 1',partner2:'Đối tác 2',values2:'Số liệu đối tác 2',partner3:'Đối tác 3',values3:'Số liệu đối tác 3',s:'Giá niêm yết',u:'Giá khuyến mãi'};
 let state=await read(),shop=localStorage.shop||state.defaultShop, sid=localStorage.sid||'',tab=state.sessions.length?'search':'import',draft=null,selected=new Set(),q='',filters={},detailCode='',page=0,oldId='',mode='source',width=100,height=120,lookup='',seed=null;
 const scopeName=k=>k==='*'?state.cluster+' · Toàn cụm':state.shops.find(x=>x.id===k)?.name+' ('+k+')';
@@ -53,8 +53,11 @@ function render(){
  if(!current()){const arr=available();sid=(arr.find(s=>s.scope===shop)||arr[0])?.id||''}
  localStorage.shop=shop;localStorage.sid=sid;
  $('#nav').innerHTML=Object.entries(nav).map(([id,s])=>'<button data-tab="'+id+'" class="'+(id===tab?'active':'')+'">'+icon(id)+s+'</button>').join('');
- all('[data-tab]').forEach(b=>b.onclick=()=>{tab=b.dataset.tab;workMode='';render()});
- $('#scope').innerHTML='<div class="scope">'+icon('shops')+'<select id="shop" aria-label="Shop đang xem">'+scopeOpts(shop)+'</select><select id="session" aria-label="Phiên bảng giá">'+(available().map(s=>opt(s.id,s.date+' · '+s.name+' · '+(s.scope==='*'?'Toàn cụm':'Riêng shop'),sid)).join('')||opt('','Chưa có phiên',''))+'</select></div>';
+ const navigate=id=>{tab=id;workMode='';render();window.scrollTo(0,0)};
+ all('[data-tab]').forEach(b=>{if(b.dataset.tab===tab)b.setAttribute('aria-current','page');b.onclick=()=>navigate(b.dataset.tab)});
+ $('#sectionPicker').innerHTML=Object.entries(nav).map(([id,label])=>opt(id,label,tab)).join('');
+ $('#sectionPicker').onchange=e=>navigate(e.target.value);
+ $('#scope').innerHTML='<div class="scope"><label>Phạm vi shop<select id="shop" aria-label="Shop đang xem">'+scopeOpts(shop)+'</select></label><label>Phiên bảng giá<select id="session" aria-label="Phiên bảng giá">'+(available().map(s=>opt(s.id,s.date+' · '+s.name+' · '+(s.scope==='*'?'Toàn cụm':'Riêng shop'),sid)).join('')||opt('','Chưa có phiên',''))+'</select></label></div>';
  on('shop','change',e=>{shop=e.target.value;sid='';clear();render()});on('session','change',e=>{sid=e.target.value;clear();render()});
  if(tab==='advanced'){const s=current();const previous=s && available().filter(x=>x.scope===s.scope && (x.date<s.date || x.date===s.date && x.at<s.at))[0];advanced({root:document.querySelector('#view'),mode:workMode,session:s,previous,icon,open:openWork})}else if(tab==='import')importView();else if(tab==='shops')shopsView();else if(tab==='history')historyView();else if(!current()){$('#view').innerHTML=title(nav[tab])+'<div class="card"><p>Chưa có bảng giá cho phạm vi này.</p><div class="actions">'+button('go','Nhập bảng giá',true)+'</div></div>';click('go',()=>{tab='import';render()})}else if(tab==='search')searchView();else if(tab==='report'){
    renderReport({root:$('#view'),session:current(),scope:scopeText(current()),dict:state.dict,esc,opt,detail,download,guarded,filter:reportFilter,
