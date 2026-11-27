@@ -64,13 +64,13 @@ export function quote(p) {
       reason:fmt(v.u)+' × '+(100-discount.rate)+'% = '+fmt(price),
       condition:[discount.source,...benefits].join('\n')};
   }
-  return {label:'Giá trên tem',price:v.u,condition:benefits.join('\n')};
+  return {label:'Giá khuyến mãi',price:v.u,condition:benefits.join('\n')};
 }
 export const hasFinal=p=>quote(p).label==='Giá cuối';
 export function message(p,session,scope,staff=false){const q=quote(p);if(q.price==null)return '';return [value(p).name,q.label+': '+fmt(q.price),q.condition,staff&&('Mã '+p.code+' · '+scope+' · '+session.date),staff&&(session.name+' · '+session.file+' · '+(q.source||'Cột U')),staff&&q.reason].filter(Boolean).join('\n')}
 export const trial=(u,rate)=>u==null?null:Math.round(u*(100-rate)/100);
 export const needs=p=>p.issues.length||value(p).u==null||value(p).s!=null&&value(p).u>value(p).s||!hasFinal(p)&&(p.recheck||offers(value(p).promo).some(o=>o.rate!=null));
 export const duplicate=(sessions,s)=>sessions.some(t=>['hash','date','scope'].every(k=>s[k]===t[k]));
-export function compare(a,b){if(a.scope!==b.scope)throw Error('Hai phiên phải cùng phạm vi.');let changes=[];for(const code of new Set([...Object.keys(a.products),...Object.keys(b.products)])){let old=a.products[code],next=b.products[code];let x=old?value(old):{},y=next?value(next):{};let delta=x.u!=null&&y.u!=null?y.u-x.u:null;let kind=!old?'Mã mới':!next?'Mã vắng':old.issues.length||next.issues.length?'Xung đột':x.u!==y.u?(delta==null?'Thay đổi giá thiếu':delta>0?'Tăng giá':'Giảm giá'):JSON.stringify(lines(x.promo))!==JSON.stringify(lines(y.promo))?'Đổi khuyến mãi':x.s!==y.s?'Đổi giá đối chiếu':'';if(kind)changes.push({code,kind,x,y,delta,pct:x.u?delta==null?null:delta/x.u*100:null})}return changes}
+export function compare(a,b){if(a.scope!==b.scope)throw Error('Hai phiên phải cùng phạm vi.');let changes=[];for(const code of new Set([...Object.keys(a.products),...Object.keys(b.products)])){let old=a.products[code],next=b.products[code];let x=old?value(old):{},y=next?value(next):{};let delta=x.u!=null&&y.u!=null?y.u-x.u:null;let kind=!old?'Mã mới':!next?'Mã vắng':old.issues.length||next.issues.length?'Xung đột':x.u!==y.u?(delta==null?'Thay đổi giá thiếu':delta>0?'Tăng giá':'Giảm giá'):JSON.stringify(lines(x.promo))!==JSON.stringify(lines(y.promo))?'Đổi khuyến mãi':x.s!==y.s?'Đổi giá niêm yết':'';if(kind)changes.push({code,kind,x,y,delta,pct:x.u?delta==null?null:delta/x.u*100:null})}return changes}
 
 

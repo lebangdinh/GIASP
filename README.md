@@ -8,13 +8,13 @@ Chọn **Nhập bảng giá** để đọc file Excel trên thiết bị. Kiểm
 
 ## Phân tích và so sánh
 
-Vào **Phân tích giá** để xếp hạng theo tiền giảm trên tem, tỷ lệ giảm hoặc giá báo khách. Bấm một phân khúc rồi lọc thêm theo nhóm phụ kiện, ưu đãi hoặc ngưỡng giảm. Có thể lưu bộ lọc theo tên trên máy. **Xuất bảng Excel** giữ thứ tự và các mã đang xem. **Đưa vào bản tin** chọn các mã đang có giá để quản lý duyệt trước khi gửi.
+Vào **Phân tích giá** để xếp hạng theo tiền giảm thêm sau khuyến mãi, tỷ lệ giảm hoặc giá báo khách. Bấm một phân khúc rồi lọc thêm theo nhóm phụ kiện, ưu đãi hoặc ngưỡng giảm. Có thể lưu bộ lọc theo tên trên máy. **Xuất bảng Excel** giữ thứ tự và các mã đang xem. **Đưa vào bản tin** chọn các mã đang có giá để quản lý duyệt trước khi gửi.
 
 Trong chi tiết sản phẩm, mở **Diễn biến giá** để xem các phiên cùng phạm vi shop. Tại **Lịch sử phiên**, chọn hai phiên, đảo chiều khi cần và xuất các thay đổi đang lọc.
 
 ## Quy tắc báo giá
 
-Áp dụng mức phần trăm ghi trên giá sau khuyến mãi cho tất cả mã phù hợp, lấy giá trên tem U làm cơ sở. Nếu có một dòng “giảm thêm” cùng dòng giảm 3% thông thường, dùng riêng mức “giảm thêm”. Các dòng có điều kiện ngoài mẫu đã duyệt hoặc nhiều mức chưa xác định cần quản lý kiểm tra. Giá quản lý đã xác nhận riêng có ưu tiên cao nhất. Chi tiết sản phẩm giữ nguyên câu nguồn và điều kiện áp dụng.
+Áp dụng mức phần trăm ghi trên giá sau khuyến mãi cho tất cả mã phù hợp, lấy giá khuyến mãi U làm cơ sở. Nếu có một dòng “giảm thêm” cùng dòng giảm 3% thông thường, dùng riêng mức “giảm thêm”. Các dòng có điều kiện ngoài mẫu đã duyệt hoặc nhiều mức chưa xác định cần quản lý kiểm tra. Giá quản lý đã xác nhận riêng có ưu tiên cao nhất. Chi tiết sản phẩm giữ nguyên câu nguồn và điều kiện áp dụng.
 
 ## Nghiệp vụ nâng cao
 

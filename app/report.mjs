@@ -52,7 +52,7 @@ export function renderReport({root,session,scope,dict,esc,opt,detail,send,downlo
   const choices=values=>[['','Tất cả'],...values.map(s=>[s,s])];
   root.innerHTML='<div class="title"><div><h1>Phân tích giá</h1><p class="muted">'+esc(scope)+' · '+esc(session.date)+' · '+esc(session.name)+'</p></div></div>'+
     '<div class="report-summary"></div><section class="card"><h2>Phân khúc theo giá báo khách</h2><div class="band-grid"></div></section>'+
-    '<section class="card"><h2>Xếp hạng sản phẩm</h2><p class="muted">Tiền giảm trên tem = giá đối chiếu S − giá trên tem U. Tỷ lệ giảm tính trên S.</p>'+
+    '<section class="card"><h2>Xếp hạng sản phẩm</h2><p class="muted">Tiền giảm thêm sau khuyến mãi = giá niêm yết S − giá khuyến mãi U. Tỷ lệ giảm tính trên S.</p>'+
     '<div class="report-filters"><label>Tên hoặc mã<input data-field="query" type="search"></label>'+
     select('group','Nhóm phụ kiện',choices(groups))+select('tag','Loại ưu đãi',choices(tags))+
     '<label>Giảm ít nhất (đ)<input type="number" min="0" data-field="amount"></label>'+
@@ -87,9 +87,9 @@ export function renderReport({root,session,scope,dict,esc,opt,detail,send,downlo
     displayed=filterReport(base,f,dict);
     const counts=bands.map((_,i)=>base.filter(r=>r.band===i).length);
     find('.band-grid').innerHTML=bands.map(([label],i)=>'<button data-band="'+i+'" aria-pressed="'+(f.band===String(i))+'"><span>'+label+'</span><strong>'+counts[i]+' mã</strong><meter min="0" max="'+Math.max(1,...counts)+'" value="'+counts[i]+'"></meter></button>').join('');
-    find('.report-summary').innerHTML='<div class="stats">'+[['Mã trong kết quả',displayed.length],['Giảm trên tem',displayed.filter(r=>r.amount>0).length],['Có giá cuối',displayed.filter(r=>r.label==='Giá cuối').length],['Thiếu giá đối chiếu',displayed.filter(r=>r.s==null).length]].map(([k,v])=>'<div class="stat"><small>'+k+'</small><strong>'+v+'</strong></div>').join('')+'</div>';
+    find('.report-summary').innerHTML='<div class="stats">'+[['Mã trong kết quả',displayed.length],['Giảm thêm sau khuyến mãi',displayed.filter(r=>r.amount>0).length],['Có giá cuối',displayed.filter(r=>r.label==='Giá cuối').length],['Thiếu giá niêm yết',displayed.filter(r=>r.s==null).length]].map(([k,v])=>'<div class="stat"><small>'+k+'</small><strong>'+v+'</strong></div>').join('')+'</div>';
     find('#reportCount').textContent=displayed.length+' sản phẩm';
-    find('.report-table').innerHTML='<table><thead><tr><th>Sản phẩm</th><th>Giá đối chiếu</th><th>Giá trên tem</th><th>Giảm trên tem</th><th>Giá báo khách</th></tr></thead><tbody>'+displayed.map(r=>'<tr><td><button class="product" data-detail="'+esc(r.code)+'">'+esc(r.name)+'</button><br><small>'+esc(r.code)+' · '+esc(r.group)+'</small></td><td>'+fmt(r.s)+'</td><td>'+fmt(r.u)+'</td><td>'+(r.amount==null?'—':fmt(r.amount))+'<br><small>'+percentText(r.percent)+'</small></td><td><b>'+fmt(r.price)+'</b><br><small>'+esc(r.label)+'</small></td></tr>').join('')+'</tbody></table>';
+    find('.report-table').innerHTML='<table><thead><tr><th>Sản phẩm</th><th>Giá niêm yết</th><th>Giá khuyến mãi</th><th>Giảm thêm sau khuyến mãi</th><th>Giá báo khách</th></tr></thead><tbody>'+displayed.map(r=>'<tr><td><button class="product" data-detail="'+esc(r.code)+'">'+esc(r.name)+'</button><br><small>'+esc(r.code)+' · '+esc(r.group)+'</small></td><td>'+fmt(r.s)+'</td><td>'+fmt(r.u)+'</td><td>'+(r.amount==null?'—':fmt(r.amount))+'<br><small>'+percentText(r.percent)+'</small></td><td><b>'+fmt(r.price)+'</b><br><small>'+esc(r.label)+'</small></td></tr>').join('')+'</tbody></table>';
     find('#reportNote').textContent=[!displayed.length?'Không có mã phù hợp.':'',session.stats.conflicts?session.stats.conflicts+' mã xung đột đang chờ kiểm tra, đã loại khỏi báo cáo.':''].filter(Boolean).join(' ');
     find('[data-action="excel"]').disabled=!displayed.length;
     find('[data-action="print"]').disabled=!displayed.some(r=>r.u!=null);
@@ -118,7 +118,7 @@ export function renderReport({root,session,scope,dict,esc,opt,detail,send,downlo
     if(b.dataset.action==='print')send(displayed.filter(r=>r.u!=null).map(r=>r.code),'print');
     if(b.dataset.action==='news')send(displayed.filter(r=>r.price!=null).map(r=>r.code));
     if(b.dataset.action==='excel'){
-      const data=[['Mã','Tên','Nhóm','S','U','Giảm trên tem (đ)','Giảm trên tem (%)','Giá báo khách','Nguồn giá','Điều kiện','Shop','Phiên','Ngày'],
+      const data=[['Mã','Tên','Nhóm','Giá niêm yết','Giá khuyến mãi','Giảm thêm sau khuyến mãi (đ)','Giảm thêm sau khuyến mãi (%)','Giá báo khách','Nguồn giá','Điều kiện','Shop','Phiên','Ngày'],
         ...displayed.map(r=>[r.code,r.name,r.group,r.s,r.u,r.amount,r.percent,r.price,r.label,r.condition,scope,session.name,session.date])];
       download(await exportExcel(data,'Phân tích giá'),'Phan-tich-gia-'+session.date+'.xlsx');
     }
