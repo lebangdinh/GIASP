@@ -1,11 +1,12 @@
 import {mapping,group,fold,normalize,category,categories,lines,money,fmt,offers,installments,confirmPrice,quote,message,trial,needs,duplicate,compare,value} from './core.mjs';
 import {readWorkbook,exportExcel} from './excel.mjs';
+import {renderReport} from './report.mjs';
 import {initial,read,write} from './state.mjs';
 const $=s=>document.querySelector(s),all=s=>[...document.querySelectorAll(s)];
 const esc=x=>String(x??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;');
-const paths={search:'M21 21l-5-5 M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0',import:'M12 16V3m-5 5 5-5 5 5M4 15v5h16v-5',history:'M3 12a9 9 0 1 0 2-6L2 9m0-6v6h6m4-3v6l4 2',news:'M4 3h16v18H4z M7 7h10M7 11h10M7 15h6',print:'M7 8V3h10v5M7 17H3V9h18v8h-4M7 14h10v7H7z',shops:'M3 10l2-6h14l2 6M4 11v9h16v-9M9 20v-6h6v6',file:'M5 2h9l5 5v15H5z M14 2v6h5M8 13h8m-8 4h6'};
+const paths={report:'M3 20h18M5 17v-5h3v5zm6 0V7h3v10zm6 0V3h3v14z',search:'M21 21l-5-5 M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0',import:'M12 16V3m-5 5 5-5 5 5M4 15v5h16v-5',history:'M3 12a9 9 0 1 0 2-6L2 9m0-6v6h6m4-3v6l4 2',news:'M4 3h16v18H4z M7 7h10M7 11h10M7 15h6',print:'M7 8V3h10v5M7 17H3V9h18v8h-4M7 14h10v7H7z',shops:'M3 10l2-6h14l2 6M4 11v9h16v-9M9 20v-6h6v6',file:'M5 2h9l5 5v15H5z M14 2v6h5M8 13h8m-8 4h6'};
 const icon=(id,size=19)=>'<svg aria-hidden="true" width="'+size+'" height="'+size+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="'+paths[id]+'"/></svg>';
-const nav={search:'Tra giá tại quầy',import:'Nhập bảng giá',history:'Lịch sử phiên',news:'Bản tin cho shop',print:'In tem sản phẩm',shops:'Quản lý cụm'};
+const nav={search:'Tra giá tại quầy',import:'Nhập bảng giá',history:'Lịch sử phiên',report:'Phân tích giá',news:'Bản tin cho shop',print:'In tem sản phẩm',shops:'Quản lý cụm'};
 const names={name:'Tên sản phẩm',badge1:'Đặc',badge2:'Quyền',ref:'Mã tham chiếu',time:'Giá trị F gốc',code:'Mã sản phẩm',promo:'Khuyến mãi',spec:'Thông số',labels:'Chỉ tiêu trả chậm',values1:'Số liệu đối tác 1',partner1:'Đối tác 1',partner2:'Đối tác 2',values2:'Số liệu đối tác 2',partner3:'Đối tác 3',values3:'Số liệu đối tác 3',s:'Giá đối chiếu',u:'Giá trên tem'};
 let state=await read(),shop=localStorage.shop||state.defaultShop, sid=localStorage.sid||'',tab=state.sessions.length?'search':'import',draft=null,selected=new Set(),q='',filters={},detailCode='',page=0,oldId='',mode='source',width=100,height=120,lookup='',seed=null;
 const scopeName=k=>k==='*'?state.cluster+' · Toàn cụm':state.shops.find(x=>x.id===k)?.name+' ('+k+')';
@@ -28,8 +29,10 @@ const click=(id,fn)=>on(id,'click',fn);
 const save=async()=>{try{await write(state)}catch(e){state=await read();render();throw e}};
 const download=(blob,name)=>{const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),10000)};
 const copy=async text=>{if(!text.trim())throw Error('Chưa có nội dung để sao chép.');await navigator.clipboard.writeText(text);toast('Đã sao chép')};
-const clear=()=>{selected.clear();detailCode='';page=0;q='';filters={};lookup='';oldId='';$('#dialog').close()};
+let reportFilter={};
+const clear=()=>{reportFilter={};selected.clear();detailCode='';page=0;q='';filters={};lookup='';oldId='';$('#dialog').close()};
 function render(){
+ $('#view').onclick=null;
  if(!state.shops.some(s=>s.id===shop)&&shop!=='*')shop=state.defaultShop;
  if(!current()){const arr=available();sid=(arr.find(s=>s.scope===shop)||arr[0])?.id||''}
  localStorage.shop=shop;localStorage.sid=sid;
@@ -37,7 +40,10 @@ function render(){
  all('[data-tab]').forEach(b=>b.onclick=()=>{tab=b.dataset.tab;render()});
  $('#scope').innerHTML='<div class="scope">'+icon('shops')+'<select id="shop" aria-label="Shop đang xem">'+scopeOpts(shop)+'</select><select id="session" aria-label="Phiên bảng giá">'+(available().map(s=>opt(s.id,s.date+' · '+s.name+' · '+(s.scope==='*'?'Toàn cụm':'Riêng shop'),sid)).join('')||opt('','Chưa có phiên',''))+'</select></div>';
  on('shop','change',e=>{shop=e.target.value;sid='';clear();render()});on('session','change',e=>{sid=e.target.value;clear();render()});
- if(tab==='import')importView();else if(tab==='shops')shopsView();else if(tab==='history')historyView();else if(!current()){$('#view').innerHTML=title(nav[tab])+'<div class="card"><p>Chưa có bảng giá cho phạm vi này.</p><div class="actions">'+button('go','Nhập bảng giá',true)+'</div></div>';click('go',()=>{tab='import';render()})}else if(tab==='search')searchView();else batchView();
+ if(tab==='import')importView();else if(tab==='shops')shopsView();else if(tab==='history')historyView();else if(!current()){$('#view').innerHTML=title(nav[tab])+'<div class="card"><p>Chưa có bảng giá cho phạm vi này.</p><div class="actions">'+button('go','Nhập bảng giá',true)+'</div></div>';click('go',()=>{tab='import';render()})}else if(tab==='search')searchView();else if(tab==='report'){
+   renderReport({root:$('#view'),session:current(),scope:scopeText(current()),dict:state.dict,esc,opt,detail,download,guarded,filter:reportFilter,
+     send(codes){selected=new Set(codes);lookup='';tab='news';render()}});
+ }else batchView();
 }
 const fileInput='<input type="file" accept=".xlsx" id="xlsx" hidden><label class="file" tabindex="0" for="xlsx">Chọn file Excel</label>';
 function importView(){
@@ -96,6 +102,17 @@ function detail(code){detailCode=code;const s=current(),p=s.products[code],v=val
  '<h3>Khuyến mãi</h3>'+os.map(o=>'<details><summary>'+esc(o.tags.join(' · ')||'Ưu đãi theo nguồn')+'</summary><p>'+esc(o.source)+'</p></details>').join('')+
  '<details><summary>Thông số sản phẩm</summary><p class="lines">'+esc(lines(v.spec).join('\n')||'Chưa có thông số')+'</p></details><details><summary>Phương án trả chậm</summary>'+plans(v)+'</details>'+raw+
  '<details id="manager"><summary>Quản lý xác nhận giá</summary><div class="form">'+(rates.length?'<label>Ưu đãi tính thử<select id="rate">'+rates.map((o,i)=>opt(i,o.source,0)).join('')+'</select></label><p id="trial"></p><button id="useTrial" type="button">Dùng giá tính thử để xác nhận</button>':'')+input('finalprice','Giá cuối xác nhận (đ)','number',g.price??'')+'<label>Điều kiện gửi khách<textarea id="condition">'+esc(g.condition)+'</textarea></label><label>Lý do xác nhận hoặc sửa giá<textarea id="reason"></textarea></label>'+button('confirmprice','Lưu xác nhận',true)+'</div><h3>Lịch sử xác nhận</h3>'+p.history.slice().reverse().map(h=>'<p>'+when(h.at)+' · '+fmt(h.price)+' · '+esc(h.source)+'</p><small>'+esc(h.reason)+'</small>').join('')+'</details>');
+ const timeline=state.sessions.filter(x=>x.scope===s.scope).sort((a,b)=>b.date.localeCompare(a.date)||b.at.localeCompare(a.at));
+ const history=document.createElement('details');
+ history.innerHTML='<summary>Diễn biến giá qua '+timeline.length+' phiên cùng phạm vi</summary><div class="scroll"><table><tr><th>Phiên</th><th>Giá trên tem</th><th>Giá báo khách</th><th>Khuyến mãi theo nguồn</th></tr>'+timeline.map(x=>{
+   const item=x.products[code];let body='<td colspan="3">Mã vắng trong phiên</td>';
+   if(item){
+     const g=quote(item),v=value(item);
+     body=item.issues.length?'<td colspan="3">Xung đột dữ liệu nguồn</td>':'<td>'+fmt(v.u)+'</td><td>'+fmt(g.price)+'<br><small>'+esc(g.label)+'</small></td><td>'+esc(lines(v.promo).join(' · ')||'—')+'</td>';
+   }
+   return '<tr><td>'+esc(x.date)+'<br>'+esc(x.name)+'</td>'+body+'</tr>';
+ }).join('')+'</table></div>';
+ dialog.append(history);
  $('#close').className='close';click('close',()=>dialog.close());if(!dialog.open)dialog.showModal();dialog.scrollTop=0;
  click('customer',()=>copy(message(p,s,scopeText(s))));click('staff',()=>copy(message(p,s,scopeText(s),true)));click('oneprint',()=>{selected=new Set([code]);mode=p.history.length?'final':'source';dialog.close();tab='print';render()});
  if($('#rate')){const calc=()=>{const o=rates[Number($('#rate').value)];$('#trial').textContent='Giá tính thử: '+fmt(v.u)+' × '+(100-o.rate)+'% = '+fmt(trial(v.u,o.rate))};calc();on('rate','change',calc);click('useTrial',()=>{const offer=rates[Number($('#rate').value)];$('#finalprice').value=trial(v.u,offer.rate)??'';$('#condition').value=offer.source})}
@@ -108,6 +125,22 @@ function detail(code){detailCode=code;const s=current(),p=s.products[code],v=val
 function plans(v){return installments(v).map(p=>'<div><b>'+esc(p.partner)+'</b> '+(p.amounts?esc('Lãi suất phẳng/thực '+p.amounts[0]+' · Trả trước '+fmt(p.amounts[1])+' · '+fmt(p.amounts[2])+'/tháng · Tổng trả chậm '+fmt(p.amounts[3])):'<span class="lines">'+esc(lines(v.labels).join('\n')+'\n'+lines(p.raw).join('\n'))+'</span>')+'</div>').join('')||'Không có dữ liệu trả chậm.'}
 function historyView(){const s=current();const peers=s?state.sessions.filter(a=>a.scope===s.scope&&a.id!==s.id).sort((a,b)=>b.date.localeCompare(a.date)||b.at.localeCompare(a.at)):[];if(!peers.some(p=>p.id===oldId))oldId=(peers.find(p=>p.date<=s.date)||peers[0])?.id||'';
  $('#view').innerHTML=title('Lịch sử phiên')+'<section class="card"><h2>Các phiên đã nhập</h2><div class="scroll"><table><tr><th>Phiên / file</th><th>Phạm vi</th><th>Áp dụng / nhập lúc</th><th>Kiểm tra</th><th></th></tr>'+state.sessions.slice().reverse().map(a=>'<tr><td>'+esc(a.name)+'<br><small>'+esc(a.file)+'</small></td><td>'+esc(scopeName(a.scope))+'</td><td>'+esc(a.date)+'<br>'+when(a.at)+'</td><td>'+a.stats.codes+' mã · '+a.stats.duplicates+' dòng lặp · '+a.stats.conflicts+' xung đột</td><td><button data-open="'+esc(a.id)+'">Mở</button></td></tr>').join('')+'</table></div></section><section class="card"><h2>So sánh với phiên đang chọn</h2>'+(oldId?'<label>Phiên đối chiếu<select id="old">'+peers.map(a=>opt(a.id,a.date+' · '+a.name,oldId)).join('')+'</select></label>'+diffTable(compare(peers.find(a=>a.id===oldId),s)):'<p>Cần hai phiên cùng phạm vi để so sánh.</p>')+'</section>';
+ if(oldId){
+   const prior=peers.find(a=>a.id===oldId);
+   const actions=document.createElement('div');
+   actions.className='actions comparison-actions';
+   actions.innerHTML='<b>'+esc(prior.date+' · '+prior.name)+' → '+esc(s.date+' · '+s.name)+'</b>'+button('reverseComparison','Đảo chiều')+button('exportComparison','Xuất Excel theo bộ lọc');
+   $('#old').parentElement.after(actions);
+   click('reverseComparison',()=>{const nextId=s.id;sid=prior.id;clear();oldId=nextId;render()});
+   click('exportComparison',async()=>{
+     const kind=$('#diffKind')?.value;
+     const changes=compare(prior,s).filter(c=>!kind||c.kind===kind);
+     if(!changes.length)throw Error('Chưa có thay đổi để xuất.');
+     const data=[['Mã','Tên sản phẩm','Loại thay đổi','Giá U trước','Giá U sau','Chênh lệch (đ)','Thay đổi (%)','Ưu đãi cũ','Ưu đãi mới','Phiên trước','Phiên sau','Phạm vi'],
+       ...changes.map(c=>[c.code,c.y.name||c.x.name,c.kind,c.x.u,c.y.u,c.delta,c.pct,lines(c.x.promo).join('\n'),lines(c.y.promo).join('\n'),prior.date+' · '+prior.name,s.date+' · '+s.name,scopeText(s)])];
+     download(await exportExcel(data,'So sánh phiên'),'So-sanh-'+prior.date+'_'+s.date+'.xlsx');
+   });
+ }
  on('diffKind','change',e=>{
    const kind=e.target.value;
    all('[data-diff-kind]').forEach(row=>{row.hidden=Boolean(kind)&&row.dataset.diffKind!==kind});
