@@ -1,15 +1,27 @@
+import {advanced} from './advanced.mjs';
 import {mapping,group,fold,normalize,category,categories,lines,money,fmt,offers,installments,confirmPrice,quote,hasFinal,message,trial,needs,duplicate,compare,value} from './core.mjs';
 import {readWorkbook,exportExcel} from './excel.mjs';
 import {renderReport} from './report.mjs';
 import {initial,read,write} from './state.mjs';
+import {overview} from './overview.mjs';
 const $=s=>document.querySelector(s),all=s=>[...document.querySelectorAll(s)];
 const esc=x=>String(x??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;');
 const paths={report:'M3 20h18M5 17v-5h3v5zm6 0V7h3v10zm6 0V3h3v14z',search:'M21 21l-5-5 M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0',import:'M12 16V3m-5 5 5-5 5 5M4 15v5h16v-5',history:'M3 12a9 9 0 1 0 2-6L2 9m0-6v6h6m4-3v6l4 2',news:'M4 3h16v18H4z M7 7h10M7 11h10M7 15h6',print:'M7 8V3h10v5M7 17H3V9h18v8h-4M7 14h10v7H7z',shops:'M3 10l2-6h14l2 6M4 11v9h16v-9M9 20v-6h6v6',file:'M5 2h9l5 5v15H5z M14 2v6h5M8 13h8m-8 4h6'};
 const icon=(id,size=19)=>'<svg aria-hidden="true" width="'+size+'" height="'+size+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="'+paths[id]+'"/></svg>';
-const nav={search:'Tra giá tại quầy',import:'Nhập bảng giá',history:'Lịch sử phiên',report:'Phân tích giá',news:'Bản tin cho shop',print:'In tem sản phẩm',shops:'Quản lý cụm'};
+paths.overview='M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z';
+let workMode='';
+paths.advanced=paths.overview;
+const nav={overview:'Tổng quan',advanced:'Nghiệp vụ nâng cao',search:'Tra giá tại quầy',import:'Nhập bảng giá',history:'Lịch sử phiên',report:'Phân tích giá',news:'Bản tin cho shop',print:'In tem sản phẩm',shops:'Quản lý cụm'};
 const names={name:'Tên sản phẩm',badge1:'Đặc',badge2:'Quyền',ref:'Mã tham chiếu',time:'Giá trị F gốc',code:'Mã sản phẩm',promo:'Khuyến mãi',spec:'Thông số',labels:'Chỉ tiêu trả chậm',values1:'Số liệu đối tác 1',partner1:'Đối tác 1',partner2:'Đối tác 2',values2:'Số liệu đối tác 2',partner3:'Đối tác 3',values3:'Số liệu đối tác 3',s:'Giá đối chiếu',u:'Giá trên tem'};
 let state=await read(),shop=localStorage.shop||state.defaultShop, sid=localStorage.sid||'',tab=state.sessions.length?'search':'import',draft=null,selected=new Set(),q='',filters={},detailCode='',page=0,oldId='',mode='source',width=100,height=120,lookup='',seed=null;
 const scopeName=k=>k==='*'?state.cluster+' · Toàn cụm':state.shops.find(x=>x.id===k)?.name+' ('+k+')';
+const bundled=document.querySelector('#bundled-session');
+if(bundled && !state.sessions.length && !state.revision){
+ const first=JSON.parse(bundled.textContent);
+ state.sessions.push(first);
+ await write(state);
+}
+if(state.sessions.length)tab='overview';
 const available=()=>state.sessions.filter(s=>s.scope===shop||s.scope==='*').sort((a,b)=>b.date.localeCompare(a.date)||b.at.localeCompare(a.at));
 const current=()=>available().find(s=>s.id===sid);
 const scopeText=s=>scopeName(shop)+' · '+(s.scope==='*'?'Bảng toàn cụm':'Bảng riêng');
@@ -31,19 +43,23 @@ const download=(blob,name)=>{const url=URL.createObjectURL(blob),a=document.crea
 const copy=async text=>{if(!text.trim())throw Error('Chưa có nội dung để sao chép.');await navigator.clipboard.writeText(text);toast('Đã sao chép')};
 let reportFilter={};
 const clear=()=>{reportFilter={};selected.clear();detailCode='';page=0;q='';filters={};lookup='';oldId='';$('#dialog').close()};
+function openWork(mode){workMode=mode;tab='advanced';render()}
 function render(){
+ document.getElementById('advancedMount').hidden=true;
+ $('#view').setAttribute('aria-busy','false');
  $('#view').onclick=null;
  if(!state.shops.some(s=>s.id===shop)&&shop!=='*')shop=state.defaultShop;
  if(!current()){const arr=available();sid=(arr.find(s=>s.scope===shop)||arr[0])?.id||''}
  localStorage.shop=shop;localStorage.sid=sid;
  $('#nav').innerHTML=Object.entries(nav).map(([id,s])=>'<button data-tab="'+id+'" class="'+(id===tab?'active':'')+'">'+icon(id)+s+'</button>').join('');
- all('[data-tab]').forEach(b=>b.onclick=()=>{tab=b.dataset.tab;render()});
+ all('[data-tab]').forEach(b=>b.onclick=()=>{tab=b.dataset.tab;workMode='';render()});
  $('#scope').innerHTML='<div class="scope">'+icon('shops')+'<select id="shop" aria-label="Shop đang xem">'+scopeOpts(shop)+'</select><select id="session" aria-label="Phiên bảng giá">'+(available().map(s=>opt(s.id,s.date+' · '+s.name+' · '+(s.scope==='*'?'Toàn cụm':'Riêng shop'),sid)).join('')||opt('','Chưa có phiên',''))+'</select></div>';
  on('shop','change',e=>{shop=e.target.value;sid='';clear();render()});on('session','change',e=>{sid=e.target.value;clear();render()});
- if(tab==='import')importView();else if(tab==='shops')shopsView();else if(tab==='history')historyView();else if(!current()){$('#view').innerHTML=title(nav[tab])+'<div class="card"><p>Chưa có bảng giá cho phạm vi này.</p><div class="actions">'+button('go','Nhập bảng giá',true)+'</div></div>';click('go',()=>{tab='import';render()})}else if(tab==='search')searchView();else if(tab==='report'){
+ if(tab==='advanced'){const s=current();const previous=s && available().filter(x=>x.scope===s.scope && (x.date<s.date || x.date===s.date && x.at<s.at))[0];advanced({root:document.querySelector('#view'),mode:workMode,session:s,previous,icon,open:openWork})}else if(tab==='import')importView();else if(tab==='shops')shopsView();else if(tab==='history')historyView();else if(!current()){$('#view').innerHTML=title(nav[tab])+'<div class="card"><p>Chưa có bảng giá cho phạm vi này.</p><div class="actions">'+button('go','Nhập bảng giá',true)+'</div></div>';click('go',()=>{tab='import';render()})}else if(tab==='search')searchView();else if(tab==='report'){
    renderReport({root:$('#view'),session:current(),scope:scopeText(current()),dict:state.dict,esc,opt,detail,download,guarded,filter:reportFilter,
      send(codes){selected=new Set(codes);lookup='';tab='news';render()}});
- }else batchView();
+ }else if(tab==='overview')overview({root:$('#view'),session:current(),dict:state.dict,esc,icon,detail,openWork,open(id,f){q='';page=0;filters=f;tab=id;render()}});
+ else batchView();
 }
 const fileInput='<input type="file" accept=".xlsx" id="xlsx" hidden><label class="file" tabindex="0" for="xlsx">Chọn file Excel</label>';
 function importView(){
@@ -64,7 +80,7 @@ function importView(){
    if(!/\.xlsx$/i.test(file.name))throw Error('Vui lòng chọn file Excel .xlsx.');
    const bytes=await file.arrayBuffer();const wb=await readWorkbook(bytes);
    const hash=[...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(n=>n.toString(16).padStart(2,'0')).join('');
- try{seed=await (await fetch('./sample.local.json')).json()}catch{seed=null}
+ try{seed=bundled?JSON.parse(document.querySelector('#bundled-seed').textContent):await (await fetch('./sample.local.json')).json()}catch{seed=null}
  draft={wb,file:file.name,hash,index:0,map:{...mapping},rows:await wb.rows(0),date:seed?.hash===hash?seed.date:date(),name:file.name.replace(/\.xlsx$/i,''),scope:shop};importView()}
  if(!draft){$('#preview').innerHTML='<div class="grid"><section class="card"><h2>Kiểm tra dữ liệu</h2><p class="muted">Xem sheet, mã trùng, giá thiếu và các dòng có điều kiện khác nhau trước khi lưu.</p></section><section class="card"><h2>Phạm vi áp dụng</h2><p class="muted">Chọn bảng chung cho toàn cụm hoặc bảng riêng của một shop.</p></section></div>';return}
  const d=draft;Object.assign(d,group(d.rows,d.map));const n=d.stats;
@@ -188,4 +204,5 @@ function shopsView(){const s=current();
  await save();shop=x.defaultShop;sid=x.sessions.at(-1)?.id||'';clear();tab='search';render();toast('Đã nhập dữ liệu')})
 }
 render();
+
 

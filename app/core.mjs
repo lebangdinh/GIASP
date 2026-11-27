@@ -3,9 +3,28 @@ export const fold=s=>String(s??'').toLowerCase().normalize('NFD').replace(/[\u03
 export const lines=s=>String(s??'').split(/_x000a_|\r?\n|•/i).map(x=>x.trim()).filter(Boolean);
 export function money(x){if(typeof x==='number')return Number.isSafeInteger(x)&&x>=0?x:null;const s=String(x??'').trim().replace(/\s*(?:đ|₫|vnd)$/i,'').trim();if(!/^(?:\d+|\d{1,3}(?:[., ]\d{3})+)$/.test(s))return null;const n=Number(s.replace(/[., ]/g,''));return Number.isSafeInteger(n)?n:null}
 export const fmt=n=>n==null?'Thiếu giá':n.toLocaleString('vi-VN')+'đ';
-export const categories=['Cáp','Pin sạc dự phòng','Tai nghe','Lưu trữ','Thiết bị mạng','Sạc','Chưa phân loại'];
+const accessoryGroups=[
+  ['Pin sạc dự phòng',/pin sac du phong|\bpsdp\b|\d{4,5}\s*mah|\bugreen pb\d/],
+  ['Pin AA / AAA',/\bpin\s+(?:alkaline\s+)?aaa?\b|\bpin than\b/],
+  ['Tai nghe',/tai nghe|\b(?:tws|ows|buds|freebuds)\b/],
+  ['Chuột',/\bchuot\b/],
+  ['Bàn phím',/\bban phim\b/],
+  ['Lưu trữ',/the nho|usb flash|o cung|o ssd|microsd|\busb\s+\d+gb|\b(?:kingston|sandisk)\b.*\d+gb/],
+  ['Thiết bị mạng',/router|wi-?fi|thiet bi mang|switch|tp-link m7350/],
+  ['Loa',/^loa\b/],
+  ['Giá đỡ',/^gia do\b/],
+  ['Thiết bị định vị',/thiet bi dinh vi/],
+  ['Củ sạc',/^(?:bo )?adapter sac/],
+  ['Cáp',/\bcap\b|^lightning\b/],
+  ['Bộ chuyển đổi',/adapter chuyen doi/],
+  ['Sạc',/\bsac\b/]
+];
+export const categories=[...accessoryGroups.map(([name])=>name),'Chưa phân loại'];
 export function normalize(s,dict){let t=fold(s);for(const [a,b] of Object.entries(dict))if(fold(a))t=t.replaceAll(fold(a),fold(b));return t}
-export function category(s,dict){let t=normalize(s,dict);for(const [i,re] of [/\bcap\b/,/pin sac du phong|psdp/,/tai nghe|\btws\b/,/the nho|usb flash|o cung|o ssd/,/router|wi-?fi|thiet bi mang|switch/,/\bsac\b/].entries())if(re.test(t))return categories[i];return categories[6]}
+export function category(s,dict){
+  const text=normalize(s,dict);
+  return accessoryGroups.find(([,pattern])=>pattern.test(text))?.[0]||'Chưa phân loại';
+}
 export function offers(raw){return lines(raw).map(source=>{const s=fold(source);const m=s.match(/giam(?: them)?\s+(\d+(?:[.,]\d+)?)\s*%/);const rate=m?Number(m[1].replace(',','.')):null;let tags=[];if(rate!=null)tags.push('Giảm '+rate+'%');if(/tra cham.*0%/.test(s))tags.push('Trả chậm 0%');if(/phieu mua hang|\bpmh\b/.test(s))tags.push('Phiếu mua hàng');else if(/tang/.test(s))tags.push('Tặng quà');if(s.includes('khong ap dung udnv'))tags.push('Không áp dụng udnv');return {source,rate,tags}})}
 export function installments(v){return [1,2,3].filter(i=>v['partner'+i]||v['values'+i]).map(i=>{const raw=v['values'+i];const parts=lines(raw);const ok=parts.length===4&&parts.slice(1).every(x=>money(x)!=null)&&lines(v.labels).length===5;return {partner:v['partner'+i],raw,amounts:ok?[parts[0],...parts.slice(1).map(money)]:null}})}
 export function group(rows,map=mapping){let products={},names=new Set(),count=0,invalid=[];for(const r of rows){let v=Object.fromEntries(Object.entries(map).map(([k,c])=>[k,r.cells[c]??'']));v.code=String(v.code).trim();if(!v.code){invalid.push(r.row);continue}count++;names.add(v.name);v.s=money(v.s);v.u=money(v.u);v.exclusive=fold(v.badge1+' '+v.badge2).replace(/\s/g,'')==='dacquyen';let p=Object.hasOwn(products,v.code)?products[v.code]:null;if(!p){p={code:v.code,variants:[],issues:[],count:0,history:[]};Object.defineProperty(products,v.code,{value:p,enumerable:true,configurable:true,writable:true})}p.count++;
@@ -53,4 +72,5 @@ export const trial=(u,rate)=>u==null?null:Math.round(u*(100-rate)/100);
 export const needs=p=>p.issues.length||value(p).u==null||value(p).s!=null&&value(p).u>value(p).s||!hasFinal(p)&&(p.recheck||offers(value(p).promo).some(o=>o.rate!=null));
 export const duplicate=(sessions,s)=>sessions.some(t=>['hash','date','scope'].every(k=>s[k]===t[k]));
 export function compare(a,b){if(a.scope!==b.scope)throw Error('Hai phiên phải cùng phạm vi.');let changes=[];for(const code of new Set([...Object.keys(a.products),...Object.keys(b.products)])){let old=a.products[code],next=b.products[code];let x=old?value(old):{},y=next?value(next):{};let delta=x.u!=null&&y.u!=null?y.u-x.u:null;let kind=!old?'Mã mới':!next?'Mã vắng':old.issues.length||next.issues.length?'Xung đột':x.u!==y.u?(delta==null?'Thay đổi giá thiếu':delta>0?'Tăng giá':'Giảm giá'):JSON.stringify(lines(x.promo))!==JSON.stringify(lines(y.promo))?'Đổi khuyến mãi':x.s!==y.s?'Đổi giá đối chiếu':'';if(kind)changes.push({code,kind,x,y,delta,pct:x.u?delta==null?null:delta/x.u*100:null})}return changes}
+
 

@@ -15,3 +15,8 @@ Trong chi tiết sản phẩm, mở **Diễn biến giá** để xem các phiên
 ## Quy tắc báo giá
 
 Áp dụng mức phần trăm ghi trên giá sau khuyến mãi cho tất cả mã phù hợp, lấy giá trên tem U làm cơ sở. Nếu có một dòng “giảm thêm” cùng dòng giảm 3% thông thường, dùng riêng mức “giảm thêm”. Các dòng có điều kiện ngoài mẫu đã duyệt hoặc nhiều mức chưa xác định cần quản lý kiểm tra. Giá quản lý đã xác nhận riêng có ưu tiên cao nhất. Chi tiết sản phẩm giữ nguyên câu nguồn và điều kiện áp dụng.
+
+## Nghiệp vụ nâng cao
+
+Mở **Nghiệp vụ nâng cao** để xếp hạng khuyến mãi, phân tích phiếu mua hàng, đối chiếu tồn kho liên shop, quản lý danh sách in và xuất báo cáo Excel bốn sheet. Các màn hình sử dụng phiên bảng giá đang chọn. Tải bảng tồn riêng khi cần tra số lượng có thể bán.
+
