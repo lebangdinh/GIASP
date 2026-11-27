@@ -115,3 +115,5 @@ th{background:#eff4fa}.catalog tr:hover,.catalog tr[data-code]:hover{background:
   #daily{border-top:3px solid #19aa96}.desk-secondary{border-color:#bbdfec}
   .brand-edit{color:#1756a4}.workflow .metric-icon{background:#daefff;color:#0f579e}
 }
+
+@media screen{#shopSettings{align-self:end;min-width:40px;height:40px;padding:0 8px;font:22px/1 "Segoe UI Symbol",sans-serif;color:#34556a}.scope:has(#shopSettings){flex-wrap:wrap}@media(max-width:820px){.scope:has(#shopSettings){grid-template-columns:minmax(0,2fr) minmax(0,3fr) auto}}}

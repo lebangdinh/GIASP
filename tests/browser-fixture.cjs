@@ -9,7 +9,7 @@ const assert=require('node:assert/strict');
  page.on('dialog',async d=>{notices.push(d.message());await d.accept()});
  await page.goto(process.env.TEST_URL||'http://127.0.0.1:4173');
  const nav=id=>page.locator('[data-tab="'+id+'"]').click();
- await nav('shops');
+ await page.locator('#shopSettings').click();
  for(const id of ['A','B']){
    await page.locator('#shopcode').fill(id);
    await page.locator('#shopname').fill('Shop thử '+id);

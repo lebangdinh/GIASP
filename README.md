@@ -20,7 +20,7 @@ Mở http://127.0.0.1:4173 bằng Chrome hoặc Edge. Giữ cửa sổ chạy l�
 
 ## Nhập bảng giá ngày mới
 
-1. Vào **Quản lý cụm** để đặt tên cụm, tạo các shop bằng mã và tên thật, rồi chọn shop mặc định.
+1. Vào **⚙ Cài đặt shop và sao lưu** để đặt tên cụm, tạo các shop bằng mã và tên thật, rồi chọn shop mặc định.
 2. Chọn **Nhập bảng giá → Chọn file Excel**. Kiểm tra sheet, ánh xạ cột, dữ liệu dòng đầu và thống kê. Nếu mẫu thay đổi, sửa ký hiệu cột trong phần ánh xạ. Ứng dụng hỗ trợ bảng .xlsx theo dòng, bắt đầu ở dòng dữ liệu đầu tiên.
 3. Xác nhận ngày áp dụng, tên phiên và phạm vi. Dùng **Toàn cụm** cho bảng chung. Chọn shop cụ thể cho bảng riêng. Cột F được giữ ở dòng Excel gốc.
 4. Bấm **Xác nhận và lưu phiên**. Các dòng xung đột có thể mở để đối chiếu từng biến thể và số dòng nguồn. Sửa file nguồn rồi nhập lại thành phiên mới khi cần.
@@ -42,7 +42,7 @@ Chọn **Xem tem** trong chi tiết sản phẩm hoặc chọn nhiều mã tại
 
 ## Chuyển sang máy nhân viên
 
-Chọn shop và phiên cần bàn giao. Vào **Quản lý cụm → Xuất gói phiên đang xem**. Chuyển file JSON cho máy nhân viên, mở ứng dụng trên máy đó rồi chọn **Nhập gói / khôi phục**. Kiểm tra shop, ngày, phiên và một mã đã xác nhận. Gói chứa dữ liệu nguồn và lịch sử quản lý, cần chuyển qua kênh nội bộ.
+Chọn shop và phiên cần bàn giao. Vào **⚙ Cài đặt shop và sao lưu → Xuất gói phiên đang xem**. Chuyển file JSON cho máy nhân viên, mở ứng dụng trên máy đó rồi chọn **Nhập gói / khôi phục**. Kiểm tra shop, ngày, phiên và một mã đã xác nhận. Gói chứa dữ liệu nguồn và lịch sử quản lý, cần chuyển qua kênh nội bộ.
 
 **Sao lưu toàn bộ** lưu mọi phiên. Khôi phục bản sao lưu sẽ yêu cầu xác nhận trước khi thay dữ liệu hiện tại. Chọn shop trên một máy chỉ thay lựa chọn cục bộ. Mỗi lần cập nhật bảng hoặc điều chỉnh giá, xuất gói mới cho máy nhân viên.
 
