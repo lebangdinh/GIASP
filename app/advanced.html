@@ -1071,29 +1071,31 @@ function fmtP(n){
   if(u===1000)return (Math.round(n/u)).toLocaleString('vi-VN')+'K';
   return Math.round(n).toLocaleString('vi-VN');
 }
-function brandOf(nm){
-  const n=(nm||'').toLowerCase();
-  const map=[
-    ['Apple','apple|iphone|ipad|macbook|airpods'],
-    ['Samsung','samsung|galaxy'],['Xiaomi','xiaomi|redmi|poco'],
-    ['OPPO','oppo|reno|find x'],['Vivo','\\bvivo\\b'],['Realme','realme'],
-    ['Honor','\\bhonor\\b'],['Nokia','nokia'],['Motorola','motorola|\\bmoto\\b'],
-    ['Dell','\\bdell\\b|inspiron|xps|alienware'],
-    ['HP','\\bhp\\b|pavilion|elitebook|omen|probook'],
-    ['Asus','asus|vivobook|zenbook|rog|tuf'],
-    ['Lenovo','lenovo|thinkpad|ideapad|legion'],
-    ['Lenovo','lenovo|thinkpad|ideapad|legion|\\byoga\\b'],
-    ['Acer','\\bacer\\b|aspire|nitro|predator|swift'],
-    ['MSI','\\bmsi\\b'],['LG','\\blg\\b'],['Panasonic','panasonic'],
-    ['Toshiba','toshiba'],['Daikin','daikin'],['Mitsubishi','mitsubishi'],
-    ['Casper','casper'],['Electrolux','electrolux'],
-    ['Sharp','\\bsharp\\b'],['Beko','beko'],['Nagakawa','nagakawa'],
-    ['Aqua','\\baqua\\b'],['Kangaroo','kangaroo'],['Sunhouse','sunhouse'],
-  ];
-  for(const[b,p]of map)if(new RegExp(p,'i').test(n))return b;
-  return(nm||'').trim().split(/\s+/)[0]||'Khác';
+const brandNames='Anker|Soundcore|Xmobile|UGREEN|AVA+|Hydrus|Rezo|Havit|Huawei|Kingston|DareU|HIKSEMI|SanDisk|Logitech|Rapoo|Philips|Amazfit|Maxell|INNOSTYLE|JBL|Kioxia|Sony|Baseus|AULA|TP-Link|Ulanzi|Energizer|Apple|Samsung|Xiaomi|OPPO|Vivo|Realme|Honor|Nokia|Motorola|Dell|HP|Asus|Lenovo|Acer|MSI|LG|Panasonic|Toshiba|Daikin|Mitsubishi|Casper|Electrolux|Sharp|Beko|Nagakawa|Aqua|Kangaroo|Sunhouse'.split('|');
+const brandsByName=new Map(brandNames.map(b=>[b.toLowerCase(),b]));
+const explicitBrand=new RegExp('(?:^|[^a-z0-9])('+brandNames.map(b=>b.replace('+','\\+')).join('|')+')(?=$|[^a-z0-9])','i');
+const brandModels=[
+  ['Anker',/\ba110[lm]\b/],['AVA+',/\b(?:ava plus|gn-05)\b/],['Ulanzi',/\bma39\b/],
+  ['Huawei',/\bfreebuds\b/],['Soundcore',/\br60i nc\b/],['Kingston',/\bdtxg2\b/],
+  ['Logitech',/\b(?:logim240(?:pink|black)|m185)\b/],['Rapoo',/\brapoob2s(?:blue|black)\b/],
+  ['JBL',/\bjblc200si\w*/],['Asus',/\basustuf\w*|\b(?:vivobook|zenbook|rog|tuf)\b/],
+  ['Energizer',/\be9[12]bp\d/],['Apple',/\b(?:iphone|ipad|macbook|airpods)\b/],
+  ['Samsung',/\bgalaxy\b/],['Xiaomi',/\b(?:redmi|poco)\b/],['OPPO',/\b(?:reno|find x)\b/],
+  ['Motorola',/\bmoto\b/],['Dell',/\b(?:inspiron|xps|alienware)\b/],
+  ['HP',/\b(?:pavilion|elitebook|omen|probook)\b/],['Lenovo',/\b(?:thinkpad|ideapad|legion|yoga)\b/],
+  ['Acer',/\b(?:aspire|nitro|predator|swift)\b/]
+];
+function brandOf(name){
+  const text=normVN(name).split(/\b(?:tuong thich|danh cho|compatible with|for)\b/)[0];
+  const match=explicitBrand.exec(text);
+  if(match)return brandsByName.get(match[1].toLowerCase());
+  return brandModels.find(([,pattern])=>pattern.test(text))?.[0]||'Chưa xác định';
 }
-
+function brandedRecords(records){
+  const rows=structuredClone(records);
+  for(const row of Object.values(rows))row.brand=brandOf(row.name);
+  return rows;
+}
 // ═══════════════════════════════════════════════════════
 //  PARSERS
 // ═══════════════════════════════════════════════════════
@@ -1264,6 +1266,7 @@ let catalogCache=null;
 function catalogLoad(){
   if(catalogCache)return catalogCache;
   try{catalogCache=JSON.parse(localStorage.getItem(CAT_KEY)||'{}');}catch(e){catalogCache={};}
+  for(const item of Object.values(catalogCache))if(!item.groupManual)item.brand=brandOf(item.name);
   return catalogCache;
 }
 function catalogSaveAll(obj){
@@ -1310,7 +1313,7 @@ function catalogUpsertFromRows(rows,tplHint){
     if(exists){
       if(exists.std){ if(exists.group!==group&&!exists.groupManual)cat[r.ma]={...exists,group}; return; } // đã chuẩn hoá theo tồn kho
       if(exists.name!==rName||exists.brand!==rBrand)updated++;
-      cat[r.ma]={...exists,ma:r.ma,brand:rBrand||exists.brand||'',name:rName,group,updatedAt:now};
+      cat[r.ma]={...exists,ma:r.ma,brand:exists.groupManual?exists.brand:rBrand||exists.brand||'',name:rName,group,updatedAt:now};
     }else{
       cat[r.ma]={ma:r.ma,brand:rBrand||'',name:rName,group,groupManual:false,updatedAt:now};
       added++;
@@ -4892,6 +4895,8 @@ window.addEventListener('gas-save',ev=>{
   else setStat('⚠ Đã đọc xong và lưu trên máy này, nhưng <b>chưa lên được Google Sheets</b>: '+E(d.err||'')+'<br>→ Bấm <b>🔌 Kiểm tra kết nối</b> để xem script đang thiếu gì.',true);
 });
 function build(){
+  for(const item of S?.items||[])item.b=brandOf(item.n);
+
   IDX=null;
   if(!S){refreshScope();return;}
   const byMa=new Map(),rowsByItem=S.items.map(()=>[]),rowsByStore=S.stores.map(()=>[]);
@@ -5766,7 +5771,7 @@ function updateSlot(side,s){
 }
 function parseSide(side,data){
   const slot=sideState[side];
-  return slot&&slot.data===data&&slot.locked?clone(slot.session.records):(manualMode?parseManual(data):parseAuto(data,tplFmt));
+  return slot&&slot.data===data&&slot.locked?brandedRecords(slot.session.records):(manualMode?parseManual(data):parseAuto(data,tplFmt));
 }
 function putSide(side,s){
   const data=clone(s.data);if(side==='N')rawN=data;else rawM=data;
@@ -5883,7 +5888,7 @@ window.PriceSessions={async registerDesk(side,data,src){
   const id=Array.from(new Uint8Array(digest).slice(0,15),n=>n.toString(16).padStart(2,'0')).join('');
   if(metas.has(id))return;
   await capture(side,data,{name:src.file},src.sheet,{id,createdAt:Date.parse(src.at)});
-},listForAnalysis:()=>[...metas.values()].sort((a,b)=>b.createdAt-a.createdAt).map(m=>({...m})),readForAnalysis:async id=>{const s=await getSession(id);return {meta:metadata(s),records:clone(s.records)};},capture,parseSide,clear(){sideState.N=sideState.M=null;},saveCurrent,syncAll};
+},listForAnalysis:()=>[...metas.values()].sort((a,b)=>b.createdAt-a.createdAt).map(m=>({...m})),readForAnalysis:async id=>{const s=await getSession(id);return {meta:metadata(s),records:brandedRecords(s.records)};},capture,parseSide,clear(){sideState.N=sideState.M=null;},saveCurrent,syncAll};
 const ready=(async()=>{
   try{for(const m of await readStore('meta'))if(!metas.has(m.id))metas.set(m.id,{...m,syncing:false});}
   catch(e){say('Không đọc được kho phiên trên máy: '+e.message,true);}
@@ -6115,5 +6120,6 @@ observer=new MutationObserver(()=>{clearTimeout(timer);timer=setTimeout(scan,80)
 })();
 </script><script src="./advanced-bridge.js"></script></body>
 </html>
+
 
 
