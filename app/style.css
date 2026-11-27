@@ -41,3 +41,6 @@ th{background:#eff4fa}.catalog tr:hover,.catalog tr[data-code]:hover{background:
 .work-heading{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin:5px 0 14px}.work-heading h1{font-size:clamp(23px,3vw,34px)}
 #advancedMount iframe{width:100%;height:calc(100dvh - 205px);min-height:470px;background:white;border:1px solid var(--line);border-radius:14px}
 .desk-shortcuts{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 0 16px}.desk-shortcuts button{font-size:14px;display:flex;align-items:center;gap:6px}
+.daily-table{max-height:400px;margin-top:12px}.daily-table thead{position:sticky;top:0}.daily-table input{width:auto}.daily-table td:nth-child(4){min-width:135px}.brand{font-size:clamp(16px,2.1vw,24px);letter-spacing:-.04em}.mark{flex-shrink:0}aside footer{line-height:1.45}aside footer small{display:block}
+@media(max-width:600px){header .brand{gap:7px}header .local{font-size:0}header .local i{display:block}}
+.brand-edit{border:0;padding:1px 3px;font-size:13px;background:transparent;color:#315c96}

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>BangGia Pro v12 VIP · Phân tích giá</title>
+<title>C933 KIỂM TRA GIÁ SẢN PHẨM · Nghiệp vụ nâng cao</title>
 
 
 <style>
@@ -349,7 +349,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 
 <!-- ════ TOPBAR ════ -->
 <div class="topbar">
-  <div class="logo">GIASP <span class="logo-badge">Nghiệp vụ</span></div>
+  <div class="logo">C933 KIỂM TRA GIÁ SẢN PHẨM <span class="logo-badge">Nghiệp vụ</span></div>
   <div class="gas-badge gas-off" id="gasSyncBadge" style="cursor:pointer" onclick="gasDiagnoseUI()" title="Trạng thái đồng bộ Danh mục/Lịch sử">💾 Offline (lưu trên máy)</div>
   
   
@@ -735,7 +735,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 
 </div><!-- /app -->
 
-<script src="./vendor/xlsx.bundle.js"></script>
+<script src="./brands.js"></script><script src="./vendor/xlsx.bundle.js"></script>
 <script src="./vendor/chart.umd.js"></script>
 <script>
 'use strict';
@@ -1071,29 +1071,10 @@ function fmtP(n){
   if(u===1000)return (Math.round(n/u)).toLocaleString('vi-VN')+'K';
   return Math.round(n).toLocaleString('vi-VN');
 }
-const brandNames='Anker|Soundcore|Xmobile|UGREEN|AVA+|Hydrus|Rezo|Havit|Huawei|Kingston|DareU|HIKSEMI|SanDisk|Logitech|Rapoo|Philips|Amazfit|Maxell|INNOSTYLE|JBL|Kioxia|Sony|Baseus|AULA|TP-Link|Ulanzi|Energizer|Apple|Samsung|Xiaomi|OPPO|Vivo|Realme|Honor|Nokia|Motorola|Dell|HP|Asus|Lenovo|Acer|MSI|LG|Panasonic|Toshiba|Daikin|Mitsubishi|Casper|Electrolux|Sharp|Beko|Nagakawa|Aqua|Kangaroo|Sunhouse'.split('|');
-const brandsByName=new Map(brandNames.map(b=>[b.toLowerCase(),b]));
-const explicitBrand=new RegExp('(?:^|[^a-z0-9])('+brandNames.map(b=>b.replace('+','\\+')).join('|')+')(?=$|[^a-z0-9])','i');
-const brandModels=[
-  ['Anker',/\ba110[lm]\b/],['AVA+',/\b(?:ava plus|gn-05)\b/],['Ulanzi',/\bma39\b/],
-  ['Huawei',/\bfreebuds\b/],['Soundcore',/\br60i nc\b/],['Kingston',/\bdtxg2\b/],
-  ['Logitech',/\b(?:logim240(?:pink|black)|m185)\b/],['Rapoo',/\brapoob2s(?:blue|black)\b/],
-  ['JBL',/\bjblc200si\w*/],['Asus',/\basustuf\w*|\b(?:vivobook|zenbook|rog|tuf)\b/],
-  ['Energizer',/\be9[12]bp\d/],['Apple',/\b(?:iphone|ipad|macbook|airpods)\b/],
-  ['Samsung',/\bgalaxy\b/],['Xiaomi',/\b(?:redmi|poco)\b/],['OPPO',/\b(?:reno|find x)\b/],
-  ['Motorola',/\bmoto\b/],['Dell',/\b(?:inspiron|xps|alienware)\b/],
-  ['HP',/\b(?:pavilion|elitebook|omen|probook)\b/],['Lenovo',/\b(?:thinkpad|ideapad|legion|yoga)\b/],
-  ['Acer',/\b(?:aspire|nitro|predator|swift)\b/]
-];
-function brandOf(name){
-  const text=normVN(name).split(/\b(?:tuong thich|danh cho|compatible with|for)\b/)[0];
-  const match=explicitBrand.exec(text);
-  if(match)return brandsByName.get(match[1].toLowerCase());
-  return brandModels.find(([,pattern])=>pattern.test(text))?.[0]||'Chưa xác định';
-}
+const brandOf=C933Brands.resolve;
 function brandedRecords(records){
   const rows=structuredClone(records);
-  for(const row of Object.values(rows))row.brand=brandOf(row.name);
+  for(const row of Object.values(rows))row.brand=brandOf(row.name,row.ma);
   return rows;
 }
 // ═══════════════════════════════════════════════════════
@@ -1110,7 +1091,7 @@ function parseAuto(data,fmt){
       if(!name||!/^\d{1,13}$/.test(ma))return;
       ma=ma.padStart(13,'0');
       gg=pp(row[18]);gi=pp(row[20]);km=String(row[7]??'').trim();
-      if(!p[ma]||km.length>p[ma].km.length)p[ma]={ma,name,gg,gi,km,brand:brandOf(name),noGg:gg==null,pkti:true};
+      if(!p[ma]||km.length>p[ma].km.length)p[ma]={ma,name,gg,gi,km,brand:brandOf(name,ma),noGg:gg==null,pkti:true};
       return;
     }else if(fmt==='mau96'){
       if(row.length<52)return;
@@ -1162,7 +1143,7 @@ function parseAuto(data,fmt){
     }
     if(!ma||!name)return;
     if(!p[ma]||(km||'').length>(p[ma].km||'').length)
-      p[ma]={ma,name,gg,gi,km,brand:brandOf(name),noGg};
+      p[ma]={ma,name,gg,gi,km,brand:brandOf(name,ma),noGg};
   });
   return p;
 }
@@ -1183,7 +1164,7 @@ function parseManual(data,columns=mapCols){
     const effGg=gg||(giRaw&&!gg?giRaw:null);
     const effGi=(giRaw&&effGg&&giRaw<effGg)?giRaw:null;
     if(!p[ma]||(km||'').length>(p[ma].km||'').length)
-      p[ma]={ma,name,gg:effGg,gi:effGi,km,brand:brandOf(name),noGg};
+      p[ma]={ma,name,gg:effGg,gi:effGi,km,brand:brandOf(name,ma),noGg};
   });
   return p;
 }
@@ -1266,7 +1247,7 @@ let catalogCache=null;
 function catalogLoad(){
   if(catalogCache)return catalogCache;
   try{catalogCache=JSON.parse(localStorage.getItem(CAT_KEY)||'{}');}catch(e){catalogCache={};}
-  for(const item of Object.values(catalogCache))if(!item.groupManual)item.brand=brandOf(item.name);
+  for(const item of Object.values(catalogCache))if(!item.groupManual)item.brand=brandOf(item.name,item.ma);
   return catalogCache;
 }
 function catalogSaveAll(obj){
@@ -1431,7 +1412,8 @@ function catSaveEdit(ma){
   const name=($('catEdName')?.value||'').trim();
   const group=$('catEdGroup')?.value||p.group;
   if(!name){toast('Tên sản phẩm không được để trống',false);return;}
-  cat[ma]={...p,brand,name,group,groupManual:true,updatedAt:Date.now()};
+  try{C933Brands.save(ma,brand)}catch(err){toast(err.message,false);return;}
+  cat[ma]={...p,brand:brandOf(name,ma),name,group,groupManual:true,updatedAt:Date.now()};
   catalogSaveAll(cat);
   toast('✓ Đã cập nhật sản phẩm');
   renderCatalog();
@@ -4895,7 +4877,7 @@ window.addEventListener('gas-save',ev=>{
   else setStat('⚠ Đã đọc xong và lưu trên máy này, nhưng <b>chưa lên được Google Sheets</b>: '+E(d.err||'')+'<br>→ Bấm <b>🔌 Kiểm tra kết nối</b> để xem script đang thiếu gì.',true);
 });
 function build(){
-  for(const item of S?.items||[])item.b=brandOf(item.n);
+  for(const item of S?.items||[])item.b=brandOf(item.n,item.ma);
 
   IDX=null;
   if(!S){refreshScope();return;}
@@ -4969,7 +4951,7 @@ function parseWb(wb,fileName){
       ii=items.length;itMap.set(ma,ii);
       const ng=col.nganh!==undefined?String(row[col.nganh]??'').trim():'';
       items.push({ma,md:col.model!==undefined?String(row[col.model]??'').trim():'',n:name,
-        b:(typeof brandOf==='function'?brandOf(name):'Khác'),
+        b:(typeof brandOf==='function'?brandOf(name,ma):'Khác'),
         g:ng.replace(/^\d+\s*-\s*/,''),nh:col.nhom!==undefined?String(row[col.nhom]??'').trim().replace(/^\d+\s*-\s*/,''):'',u:col.unit!==undefined?String(row[col.unit]??'').trim():''});
       nameSet.set(ma,new Set([name]));
     }else nameSet.get(ma).add(name);
@@ -5052,7 +5034,7 @@ window.stockApplyStd=function(rows){
     const e=IDX&&IDX.byMa.get(r.ma);
     if(stdOn&&e){
       if(r._n0===undefined){r._n0=r.name;r._b0=r.brand;}
-      r.name=e.it.n;r.brand=e.it.b;
+      r.name=e.it.n;r.brand=brandOf(e.it.n,r.ma);
     }else if(r._n0!==undefined){r.name=r._n0;r.brand=r._b0;delete r._n0;delete r._b0;}
   }
 };
@@ -6019,7 +6001,7 @@ function buildWorkbook(data){
 }
 function exportXlsx(data){if(!data?.rows?.length){toast('Chưa có dữ liệu để xuất',false);return;}try{const wb=buildWorkbook(data);XLSX.writeFile(wb,'BangGia_VIP_'+new Date().toISOString().replace(/[:.]/g,'-')+'.xlsx',{cellStyles:true});toast('Đã xuất 4 sheet: Tổng quan, Chi tiết, Top 20, Theo hãng.');}catch(e){toast('Không xuất được Excel: '+e.message,false);}}
 function reportHTML(data){const st=stats(data.rows),gs=groups(data.rows),max=gs[0]?.count||1;
- return `<!DOCTYPE html><html lang="vi"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Báo cáo bảng giá</title><style>body{font:15px/1.6 Arial,sans-serif;color:#20344f;background:#edf2f8;margin:0}main{max-width:1200px;margin:32px auto;background:white;padding:36px;border-radius:16px}h1{font-size:30px;color:#142e52;margin:0}h2{font-size:20px;margin-top:32px}.meta{color:#52657a;overflow-wrap:anywhere}.metrics{display:flex;gap:14px;flex-wrap:wrap}.metrics div{padding:18px;background:#f1f6fc;border:1px solid #dce5f0;border-radius:10px;flex:1;min-width:130px}.metrics b{font-size:25px;display:block;color:#2459a8}table{width:100%;border-collapse:collapse;font-size:13px}th{background:#142e52;color:white;text-align:left;padding:13px}td{padding:12px;border-bottom:1px solid #dce5f0;vertical-align:top}tr:nth-child(even){background:#f5f8fc}small{display:block;color:#52657a}.vip-number{white-space:nowrap;text-align:right}.vip-down{color:#167246}.vip-up{color:#bf3040}.scroll{overflow:auto}.bar{display:flex;align-items:center;gap:12px;margin:10px 0}.bar span{width:120px}.track{flex:1;background:#edf2f8}.track i{display:block;background:#3873d7;height:18px}button{background:#2459a8;color:white;padding:11px 18px;border:0;border-radius:8px;cursor:pointer}@media(max-width:600px){main{padding:18px;margin:0}}@media print{@page{size:A4 landscape;margin:12mm}body{background:white}main{margin:0;padding:0}button{display:none}thead{display:table-header-group}tr{break-inside:avoid}.scroll{overflow:visible}th{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style><main><button onclick="window.print()" style="float:right">In / Lưu PDF</button><h1>Báo cáo bảng giá</h1><p class="meta">${E(data.label)}<br>Xuất lúc ${E(data.generatedAt)}<br>${E(data.stockLabel)}</p><div class="metrics"><div>Sản phẩm<b>${fmt(st.total)}</b></div><div>Giá trung vị<b>${price(st.median)}</b></div><div>${data.compared?'Giá giảm so với N':'Có khuyến mãi'}<b>${fmt(data.compared?st.down:st.discount)}</b></div><div>Còn hàng / biết tồn<b>${st.inStock} / ${st.stockKnown}</b></div></div><h2>Cơ cấu sản phẩm theo hãng</h2>${gs.slice(0,10).map(g=>`<div class="bar"><span>${E(g.brand)}</span><div class="track"><i style="width:${100*g.count/max}%"></i></div><b>${g.count}</b></div>`).join('')}<h2>Chi tiết sản phẩm</h2><p class="meta">${data.query?E('Bộ lọc: '+data.query+' · '+data.sortLabel):'Giá bán chưa tự trừ PMH/quà tặng. Tồn kho theo phạm vi đang chọn; “chưa rõ” không có nghĩa hết hàng.'}</p><div class="scroll">${tableHTML(data.rows,data.compared)}</div></main></html>`;
+ return `<!DOCTYPE html><html lang="vi"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>C933 KIỂM TRA GIÁ SẢN PHẨM · Nghiệp vụ nâng cao</title><style>body{font:15px/1.6 Arial,sans-serif;color:#20344f;background:#edf2f8;margin:0}main{max-width:1200px;margin:32px auto;background:white;padding:36px;border-radius:16px}h1{font-size:30px;color:#142e52;margin:0}h2{font-size:20px;margin-top:32px}.meta{color:#52657a;overflow-wrap:anywhere}.metrics{display:flex;gap:14px;flex-wrap:wrap}.metrics div{padding:18px;background:#f1f6fc;border:1px solid #dce5f0;border-radius:10px;flex:1;min-width:130px}.metrics b{font-size:25px;display:block;color:#2459a8}table{width:100%;border-collapse:collapse;font-size:13px}th{background:#142e52;color:white;text-align:left;padding:13px}td{padding:12px;border-bottom:1px solid #dce5f0;vertical-align:top}tr:nth-child(even){background:#f5f8fc}small{display:block;color:#52657a}.vip-number{white-space:nowrap;text-align:right}.vip-down{color:#167246}.vip-up{color:#bf3040}.scroll{overflow:auto}.bar{display:flex;align-items:center;gap:12px;margin:10px 0}.bar span{width:120px}.track{flex:1;background:#edf2f8}.track i{display:block;background:#3873d7;height:18px}button{background:#2459a8;color:white;padding:11px 18px;border:0;border-radius:8px;cursor:pointer}@media(max-width:600px){main{padding:18px;margin:0}}@media print{@page{size:A4 landscape;margin:12mm}body{background:white}main{margin:0;padding:0}button{display:none}thead{display:table-header-group}tr{break-inside:avoid}.scroll{overflow:visible}th{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style><main><button onclick="window.print()" style="float:right">In / Lưu PDF</button><h1>Báo cáo bảng giá</h1><p class="meta">${E(data.label)}<br>Xuất lúc ${E(data.generatedAt)}<br>${E(data.stockLabel)}</p><div class="metrics"><div>Sản phẩm<b>${fmt(st.total)}</b></div><div>Giá trung vị<b>${price(st.median)}</b></div><div>${data.compared?'Giá giảm so với N':'Có khuyến mãi'}<b>${fmt(data.compared?st.down:st.discount)}</b></div><div>Còn hàng / biết tồn<b>${st.inStock} / ${st.stockKnown}</b></div></div><h2>Cơ cấu sản phẩm theo hãng</h2>${gs.slice(0,10).map(g=>`<div class="bar"><span>${E(g.brand)}</span><div class="track"><i style="width:${100*g.count/max}%"></i></div><b>${g.count}</b></div>`).join('')}<h2>Chi tiết sản phẩm</h2><p class="meta">${data.query?E('Bộ lọc: '+data.query+' · '+data.sortLabel):'Giá bán chưa tự trừ PMH/quà tặng. Tồn kho theo phạm vi đang chọn; “chưa rõ” không có nghĩa hết hàng.'}</p><div class="scroll">${tableHTML(data.rows,data.compared)}</div></main></html>`;
 }
 function exportHtml(data){if(!data?.rows?.length)return;const url=URL.createObjectURL(new Blob([reportHTML(data)],{type:'text/html;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='BaoCao_BangGia_'+Date.now()+'.html';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 // Upgrade tabular legacy exports while preserving price-label layouts and numerical values.
@@ -6120,6 +6102,7 @@ observer=new MutationObserver(()=>{clearTimeout(timer);timer=setTimeout(scan,80)
 })();
 </script><script src="./advanced-bridge.js"></script></body>
 </html>
+
 
 
 

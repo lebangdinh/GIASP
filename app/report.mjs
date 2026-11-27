@@ -59,7 +59,7 @@ export function renderReport({root,session,scope,dict,esc,opt,detail,send,downlo
     '<label>Giảm ít nhất (%)<input type="number" min="0" step="any" data-field="percent"></label>'+
     select('sort','Sắp xếp',Object.entries(orders))+'</div><div class="actions"><button data-action="reset">Xóa bộ lọc</button></div>'+
     '<details><summary>Bộ lọc đã lưu trên máy</summary><div class="row"><label>Tên bộ lọc<input id="presetName" maxlength="64"></label><button data-action="savePreset">Lưu bộ lọc hiện tại</button></div><div class="row"><label>Chọn bộ lọc<select id="presetList"></select></label><button data-action="loadPreset">Áp dụng</button><button data-action="deletePreset">Xóa bộ lọc đã lưu</button></div></details></section>'+
-    '<section class="card"><div class="report-head"><h2 id="reportCount"></h2><div class="actions"><button data-action="excel">Xuất bảng Excel</button><button data-action="news" class="primary">Đưa vào bản tin</button></div></div>'+
+    '<section class="card"><div class="report-head"><h2 id="reportCount"></h2><div class="actions"><button data-action="excel">Xuất bảng Excel</button><button data-action="print">In tem đang lọc</button><button data-action="news" class="primary">Đưa vào bản tin</button></div></div>'+
     '<div class="report-table scroll"></div><p class="muted" id="reportNote"></p></section>';
   const find=s=>root.querySelector(s);
   function showPresets(index=0){
@@ -92,6 +92,7 @@ export function renderReport({root,session,scope,dict,esc,opt,detail,send,downlo
     find('.report-table').innerHTML='<table><thead><tr><th>Sản phẩm</th><th>Giá đối chiếu</th><th>Giá trên tem</th><th>Giảm trên tem</th><th>Giá báo khách</th></tr></thead><tbody>'+displayed.map(r=>'<tr><td><button class="product" data-detail="'+esc(r.code)+'">'+esc(r.name)+'</button><br><small>'+esc(r.code)+' · '+esc(r.group)+'</small></td><td>'+fmt(r.s)+'</td><td>'+fmt(r.u)+'</td><td>'+(r.amount==null?'—':fmt(r.amount))+'<br><small>'+percentText(r.percent)+'</small></td><td><b>'+fmt(r.price)+'</b><br><small>'+esc(r.label)+'</small></td></tr>').join('')+'</tbody></table>';
     find('#reportNote').textContent=[!displayed.length?'Không có mã phù hợp.':'',session.stats.conflicts?session.stats.conflicts+' mã xung đột đang chờ kiểm tra, đã loại khỏi báo cáo.':''].filter(Boolean).join(' ');
     find('[data-action="excel"]').disabled=!displayed.length;
+    find('[data-action="print"]').disabled=!displayed.some(r=>r.u!=null);
     const eligible=displayed.filter(r=>r.price!=null);
     find('[data-action="news"]').disabled=!eligible.length;
     find('[data-action="news"]').textContent='Đưa '+eligible.length+' mã vào bản tin';
@@ -114,6 +115,7 @@ export function renderReport({root,session,scope,dict,esc,opt,detail,send,downlo
       presets.splice(Number(find('#presetList').value),1);
       localStorage.setItem(presetKey,JSON.stringify(presets));showPresets();
     }
+    if(b.dataset.action==='print')send(displayed.filter(r=>r.u!=null).map(r=>r.code),'print');
     if(b.dataset.action==='news')send(displayed.filter(r=>r.price!=null).map(r=>r.code));
     if(b.dataset.action==='excel'){
       const data=[['Mã','Tên','Nhóm','S','U','Giảm trên tem (đ)','Giảm trên tem (%)','Giá báo khách','Nguồn giá','Điều kiện','Shop','Phiên','Ngày'],
@@ -123,3 +125,4 @@ export function renderReport({root,session,scope,dict,esc,opt,detail,send,downlo
   });
   update();
 }
+

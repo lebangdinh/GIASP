@@ -1,7 +1,8 @@
+import {daily} from './daily.mjs';
 import {category,fmt,hasFinal,needs,value} from './core.mjs';
 import {reportRows} from './report.mjs';
 
-export function overview({root,session,dict,esc,icon,open,openWork,detail}) {
+export function overview({root,session,dict,esc,icon,open,openWork,detail,previous,shop,send}) {
   const products=Object.values(session.products);
   const deals=reportRows(session,dict).filter(row=>row.amount>0).sort((a,b)=>b.amount-a.amount).slice(0,5);
   const groups=new Map();
@@ -22,9 +23,10 @@ export function overview({root,session,dict,esc,icon,open,openWork,detail}) {
     <div class="ticket-art" aria-hidden="true"><div class="art-back"></div><div class="art-tag"><i></i><b>₫</b><em></em></div></div>
   </section>
   <div class="desk-metrics">${metrics.map(([glyph,label,count,status],i)=>`<button data-status="${status}" class="metric m${i}"><span class="metric-icon">${icon(glyph,21)}</span><span>${label}<strong>${count.toLocaleString('vi-VN')}</strong></span></button>`).join('')}</div>
-  <div class="desk-shortcuts"><button data-work="promo">Xếp hạng khuyến mãi</button><button data-work="pmh">Phiếu mua hàng</button><button data-work="stock">Tồn kho liên shop</button><button data-work="vip">Báo cáo Excel</button></div><div class="desk-panels"><section class="card"><div class="panel-top"><h2>Giảm nhiều trên tem</h2><button data-go="report">Xem phân tích</button></div>
+  <section class="card" id="daily"></section><div class="desk-shortcuts"><button data-work="promo">Xếp hạng khuyến mãi</button><button data-work="pmh">Phiếu mua hàng</button><button data-work="stock">Tồn kho liên shop</button><button data-work="vip">Báo cáo Excel</button></div><div class="desk-panels"><section class="card"><div class="panel-top"><h2>Giảm nhiều trên tem</h2><button data-go="report">Xem phân tích</button></div>
   <div class="deal-list">${deals.map((r,i)=>`<button data-item="${esc(r.code)}"><span class="rank">${i+1}</span><span class="deal-name">${esc(r.name)}<small>${esc(r.code)}</small></span><span class="saving">−${fmt(r.amount)}</span></button>`).join('')||'<p>Chưa có mã giảm giá trên tem.</p>'}</div></section>
   <section class="card"><div class="panel-top"><h2>Nhóm phụ kiện</h2></div><div class="category-bars">${ranked.map(([name,n])=>`<button data-group="${esc(name)}"><span>${esc(name)}<b>${n}</b></span><i><em style="width:${100*n/ranked[0][1]}%"></em></i></button>`).join('')}</div></section></div>`;
+  daily({root:root.querySelector('#daily'),session,previous,shop,esc,detail,send});
   root.onclick=e=>{
     const b=e.target.closest('button');
     if(!b)return;
@@ -35,4 +37,5 @@ export function overview({root,session,dict,esc,icon,open,openWork,detail}) {
     else if(b.dataset.go)open(b.dataset.go,{});
   };
 }
+
 

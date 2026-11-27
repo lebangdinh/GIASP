@@ -43,6 +43,7 @@ const download=(blob,name)=>{const url=URL.createObjectURL(blob),a=document.crea
 const copy=async text=>{if(!text.trim())throw Error('Chưa có nội dung để sao chép.');await navigator.clipboard.writeText(text);toast('Đã sao chép')};
 let reportFilter={};
 const clear=()=>{reportFilter={};selected.clear();detailCode='';page=0;q='';filters={};lookup='';oldId='';$('#dialog').close()};
+const priorTo=s=>available().find(x=>x.scope===s.scope && (x.date<s.date || x.date===s.date && x.at<s.at));
 function openWork(mode){workMode=mode;tab='advanced';render()}
 function render(){
  document.getElementById('advancedMount').hidden=true;
@@ -57,8 +58,8 @@ function render(){
  on('shop','change',e=>{shop=e.target.value;sid='';clear();render()});on('session','change',e=>{sid=e.target.value;clear();render()});
  if(tab==='advanced'){const s=current();const previous=s && available().filter(x=>x.scope===s.scope && (x.date<s.date || x.date===s.date && x.at<s.at))[0];advanced({root:document.querySelector('#view'),mode:workMode,session:s,previous,icon,open:openWork})}else if(tab==='import')importView();else if(tab==='shops')shopsView();else if(tab==='history')historyView();else if(!current()){$('#view').innerHTML=title(nav[tab])+'<div class="card"><p>Chưa có bảng giá cho phạm vi này.</p><div class="actions">'+button('go','Nhập bảng giá',true)+'</div></div>';click('go',()=>{tab='import';render()})}else if(tab==='search')searchView();else if(tab==='report'){
    renderReport({root:$('#view'),session:current(),scope:scopeText(current()),dict:state.dict,esc,opt,detail,download,guarded,filter:reportFilter,
-     send(codes){selected=new Set(codes);lookup='';tab='news';render()}});
- }else if(tab==='overview')overview({root:$('#view'),session:current(),dict:state.dict,esc,icon,detail,openWork,open(id,f){q='';page=0;filters=f;tab=id;render()}});
+     send(codes,target='news'){selected=new Set(codes);lookup='';mode='source';tab=target;render()}});
+ }else if(tab==='overview')overview({root:$('#view'),session:current(),dict:state.dict,esc,icon,detail,openWork,previous:priorTo(current()),shop,send(id,codes){selected=new Set(codes);lookup='';mode='source';tab=id;render()},open(id,f){q='';page=0;filters=f;tab=id;render()}});
  else batchView();
 }
 const fileInput='<input type="file" accept=".xlsx" id="xlsx" hidden><label class="file" tabindex="0" for="xlsx">Chọn file Excel</label>';
@@ -107,7 +108,7 @@ function searchView(){const s=current();const ps=Object.values(s.products);const
 }
 function matches(p,t){return p.code.includes(t)||p.variants.some(({v})=>fold(v.ref).includes(t)||normalize(v.name,state.dict).includes(t)||fold(v.name).includes(t))}
 function results(){const s=current(),t=normalize(q,state.dict);const list=Object.values(s.products).filter(p=>{const v=value(p),g=quote(p);return matches(p,t)&&(!filters.cat||category(v.name,state.dict)===filters.cat)&&(!filters.offer||offers(v.promo).some(o=>o.tags.includes(filters.offer)))&&(!filters.min||g.price!=null&&g.price>=Number(filters.min))&&(!filters.max||g.price!=null&&g.price<=Number(filters.max))&&(!filters.status||({'Đặc quyền':v.exclusive,'Có giá cuối':hasFinal(p),'Cần xác nhận':!hasFinal(p)&&needs(p),'Cần kiểm tra':needs(p)})[filters.status])}).sort((a,b)=>Number(b.code===t)-Number(a.code===t)||String(value(a).name).localeCompare(String(value(b).name),'vi'));
- $('#count').textContent=list.length+' sản phẩm';$('#results').innerHTML=list.length?'<table class="catalog"><thead><tr><th>Sản phẩm</th><th>Giá báo khách</th><th>Trạng thái</th></tr></thead><tbody>'+list.slice(page*30,page*30+30).map(p=>{const g=quote(p);return '<tr data-code="'+esc(p.code)+'"><td><button class="product">'+esc(value(p).name)+'</button><br><span class="code">'+esc(p.code)+'</span></td><td><span class="list-price">'+fmt(g.price)+'</span><br><small>'+g.label+'</small></td><td>'+(value(p).exclusive?pill('Đặc quyền'):'')+(hasFinal(p)?pill(p.history.length?'Quản lý xác nhận':'Theo ưu đãi'):needs(p)?pill('Cần kiểm tra',true):'—')+'</td></tr>'}).join('')+'</tbody></table><div class="actions">'+(page?button('prev','Trang trước'):'')+'<small>Trang '+(page+1)+' / '+Math.ceil(list.length/30)+'</small>'+(list.length>(page+1)*30?button('next','Trang sau'):'')+'</div>':'<p class="empty">Không có sản phẩm phù hợp.</p>';all('[data-code]').forEach(el=>el.onclick=()=>detail(el.dataset.code));click('prev',()=>{page--;results()});click('next',()=>{page++;results()})}
+ $('#count').textContent=list.length+' sản phẩm';$('#results').innerHTML=list.length?'<table class="catalog"><thead><tr><th>Sản phẩm</th><th>Giá báo khách</th><th>Trạng thái</th></tr></thead><tbody>'+list.slice(page*30,page*30+30).map(p=>{const g=quote(p);return '<tr data-code="'+esc(p.code)+'"><td><button class="product">'+esc(value(p).name)+'</button><br><span class="code">'+esc(p.code)+'</span> · <button class="brand-edit" data-editbrand>'+esc(C933Brands.resolve(value(p).name,p.code))+'</button></td><td><span class="list-price">'+fmt(g.price)+'</span><br><small>'+g.label+'</small></td><td>'+(value(p).exclusive?pill('Đặc quyền'):'')+(hasFinal(p)?pill(p.history.length?'Quản lý xác nhận':'Theo ưu đãi'):needs(p)?pill('Cần kiểm tra',true):'—')+'</td></tr>'}).join('')+'</tbody></table><div class="actions">'+(page?button('prev','Trang trước'):'')+'<small>Trang '+(page+1)+' / '+Math.ceil(list.length/30)+'</small>'+(list.length>(page+1)*30?button('next','Trang sau'):'')+'</div>':'<p class="empty">Không có sản phẩm phù hợp.</p>';all('[data-code]').forEach(el=>el.onclick=e=>{detail(el.dataset.code);if(e.target.closest('[data-editbrand]')){const input=document.querySelector('#manualBrand');input.closest('details').open=true;input.focus()}});click('prev',()=>{page--;results()});click('next',()=>{page++;results()})}
 function detail(code){detailCode=code;const s=current(),p=s.products[code],v=value(p),g=quote(p),os=offers(v.promo),rates=os.filter(o=>o.rate!=null),dialog=$('#dialog');
  const amount=v.s!=null&&v.u!=null?v.s-v.u:null;
  const raw='<details><summary>Dòng Excel gốc · '+p.count+' lần xuất hiện</summary>'+p.variants.map(x=>'<p>'+esc(s.file)+' · '+esc(s.sheet)+' · dòng '+x.rows.join(', ')+'</p><pre>'+esc(JSON.stringify(x.cells,null,2))+'</pre>').join('')+'</details>';
@@ -118,6 +119,10 @@ function detail(code){detailCode=code;const s=current(),p=s.products[code],v=val
  '<h3>Khuyến mãi</h3>'+os.map(o=>'<details><summary>'+esc(o.tags.join(' · ')||'Ưu đãi theo nguồn')+'</summary><p>'+esc(o.source)+'</p></details>').join('')+
  '<details><summary>Thông số sản phẩm</summary><p class="lines">'+esc(lines(v.spec).join('\n')||'Chưa có thông số')+'</p></details><details><summary>Phương án trả chậm</summary>'+plans(v)+'</details>'+raw+
  '<details id="manager"><summary>Quản lý xác nhận giá</summary><div class="form">'+(rates.length?'<label>Ưu đãi tính thử<select id="rate">'+rates.map((o,i)=>opt(i,o.source,0)).join('')+'</select></label><p id="trial"></p><button id="useTrial" type="button">Dùng giá tính thử để xác nhận</button>':'')+input('finalprice','Giá cuối xác nhận (đ)','number',g.price??'')+'<label>Điều kiện gửi khách<textarea id="condition">'+esc(g.condition)+'</textarea></label><label>Lý do xác nhận hoặc sửa giá<textarea id="reason"></textarea></label>'+button('confirmprice','Lưu xác nhận',true)+'</div><h3>Lịch sử xác nhận</h3>'+p.history.slice().reverse().map(h=>'<p>'+when(h.at)+' · '+fmt(h.price)+' · '+esc(h.source)+'</p><small>'+esc(h.reason)+'</small>').join('')+'</details>');
+ const brand=C933Brands.resolve(v.name,code);
+ dialog.querySelector('h2').insertAdjacentHTML('afterend','<details><summary>Hãng · '+esc(brand)+'</summary><label>Hãng cho mã '+esc(code)+'<input id="manualBrand" list="knownBrands" maxlength="60" value="'+esc(brand==='Chưa xác định'?'':brand)+'"></label><datalist id="knownBrands">'+C933Brands.names.map(n=>'<option value="'+esc(n)+'">').join('')+'</datalist><div class="actions">'+button('saveBrand','Lưu hãng cho mã này')+button('autoBrand','Dùng nhận diện tự động')+'</div></details>');
+ click('saveBrand',()=>{const name=$('#manualBrand').value.trim();if(!name)throw Error('Nhập hoặc chọn hãng.');C933Brands.save(code,name);if(tab==='search')results();detail(code);toast('Đã lưu hãng cho '+code)});
+ click('autoBrand',()=>{C933Brands.save(code,'');if(tab==='search')results();detail(code);toast('Đã dùng nhận diện tự động')});
  const timeline=state.sessions.filter(x=>x.scope===s.scope).sort((a,b)=>b.date.localeCompare(a.date)||b.at.localeCompare(a.at));
  const history=document.createElement('details');
  history.innerHTML='<summary>Diễn biến giá qua '+timeline.length+' phiên cùng phạm vi</summary><div class="scroll"><table><tr><th>Phiên</th><th>Giá trên tem</th><th>Giá báo khách</th><th>Khuyến mãi theo nguồn</th></tr>'+timeline.map(x=>{
@@ -204,5 +209,7 @@ function shopsView(){const s=current();
  await save();shop=x.defaultShop;sid=x.sessions.at(-1)?.id||'';clear();tab='search';render();toast('Đã nhập dữ liệu')})
 }
 render();
+
+
 
 

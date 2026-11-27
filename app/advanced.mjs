@@ -35,11 +35,12 @@ export function advanced({root,mode,session,previous,icon,open}){
   const mount=document.getElementById('advancedMount');
   mount.hidden=false;
   if(!frame){
-    frame=document.createElement('iframe');frame.title='GIASP · Nghiệp vụ nâng cao';frame.allow='clipboard-write';
+    frame=document.createElement('iframe');frame.title='C933 KIỂM TRA GIÁ SẢN PHẨM · Nghiệp vụ nâng cao';frame.allow='clipboard-write';
     const standalone=document.getElementById('advanced-document');
     if(standalone)frame.srcdoc=JSON.parse(standalone.textContent);
     else frame.src='./advanced.html';
     mount.append(frame);
   }else deliver();
 }
+
 
