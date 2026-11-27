@@ -42,11 +42,24 @@ function render(){
 const fileInput='<input type="file" accept=".xlsx" id="xlsx" hidden><label class="file" tabindex="0" for="xlsx">Chọn file Excel</label>';
 function importView(){
  $('#view').innerHTML=title('Nhập bảng giá','Chọn file Excel, kiểm tra dữ liệu và lưu phiên áp dụng cho shop.')+
- '<section class="card hero">'+icon('file',36)+'<h2>'+(draft?esc(draft.file):'Bảng giá từ Excel')+'</h2><p class="muted">Định dạng .xlsx · Đọc trực tiếp trên thiết bị</p>'+fileInput+'</section><div id="preview"></div>';
+ '<section class="card hero">'+icon('file',36)+'<h2>'+(draft?esc(draft.file):'Bảng giá từ Excel')+'</h2><p class="muted">Kéo thả một file .xlsx vào đây hoặc chọn file trên thiết bị.</p>'+fileInput+'</section><div id="preview"></div>';
  $('.file').onkeydown=e=>{if(['Enter',' '].includes(e.key)){e.preventDefault();$('#xlsx').click()}};
- on('xlsx','change',async e=>{const file=e.target.files[0];if(!file)return;const bytes=await file.arrayBuffer();const wb=await readWorkbook(bytes);const hash=[...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(n=>n.toString(16).padStart(2,'0')).join('');
+ const dropZone=$('.hero');
+ dropZone.ondragover=e=>{e.preventDefault();e.dataTransfer.dropEffect='copy';dropZone.classList.add('dragging')};
+ dropZone.ondragleave=e=>{if(!dropZone.contains(e.relatedTarget))dropZone.classList.remove('dragging')};
+ dropZone.ondrop=guarded(async e=>{
+   e.preventDefault();dropZone.classList.remove('dragging');
+   if(e.dataTransfer.files.length!==1)throw Error('Chọn một file Excel mỗi lần nhập.');
+   await previewFile(e.dataTransfer.files[0]);
+ });
+ on('xlsx','change',e=>previewFile(e.target.files[0]));
+ async function previewFile(file){
+   if(!file)return;
+   if(!/\.xlsx$/i.test(file.name))throw Error('Vui lòng chọn file Excel .xlsx.');
+   const bytes=await file.arrayBuffer();const wb=await readWorkbook(bytes);
+   const hash=[...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(n=>n.toString(16).padStart(2,'0')).join('');
  try{seed=await (await fetch('./sample.local.json')).json()}catch{seed=null}
- draft={wb,file:file.name,hash,index:0,map:{...mapping},rows:await wb.rows(0),date:seed?.hash===hash?seed.date:date(),name:file.name.replace(/\.xlsx$/i,''),scope:shop};importView()});
+ draft={wb,file:file.name,hash,index:0,map:{...mapping},rows:await wb.rows(0),date:seed?.hash===hash?seed.date:date(),name:file.name.replace(/\.xlsx$/i,''),scope:shop};importView()}
  if(!draft){$('#preview').innerHTML='<div class="grid"><section class="card"><h2>Kiểm tra dữ liệu</h2><p class="muted">Xem sheet, mã trùng, giá thiếu và các dòng có điều kiện khác nhau trước khi lưu.</p></section><section class="card"><h2>Phạm vi áp dụng</h2><p class="muted">Chọn bảng chung cho toàn cụm hoặc bảng riêng của một shop.</p></section></div>';return}
  const d=draft;Object.assign(d,group(d.rows,d.map));const n=d.stats;
  $('#preview').innerHTML=stats([['Dòng nguồn',n.rows],['Mã duy nhất',n.codes],['Tên khác nhau',n.names],['Dòng lặp',n.duplicates],['Thiếu giá S',n.missingS],['Thiếu giá U',n.missingU],['Mã xung đột',n.conflicts]])+
@@ -95,8 +108,16 @@ function detail(code){detailCode=code;const s=current(),p=s.products[code],v=val
 function plans(v){return installments(v).map(p=>'<div><b>'+esc(p.partner)+'</b> '+(p.amounts?esc('Lãi suất phẳng/thực '+p.amounts[0]+' · Trả trước '+fmt(p.amounts[1])+' · '+fmt(p.amounts[2])+'/tháng · Tổng trả chậm '+fmt(p.amounts[3])):'<span class="lines">'+esc(lines(v.labels).join('\n')+'\n'+lines(p.raw).join('\n'))+'</span>')+'</div>').join('')||'Không có dữ liệu trả chậm.'}
 function historyView(){const s=current();const peers=s?state.sessions.filter(a=>a.scope===s.scope&&a.id!==s.id).sort((a,b)=>b.date.localeCompare(a.date)||b.at.localeCompare(a.at)):[];if(!peers.some(p=>p.id===oldId))oldId=(peers.find(p=>p.date<=s.date)||peers[0])?.id||'';
  $('#view').innerHTML=title('Lịch sử phiên')+'<section class="card"><h2>Các phiên đã nhập</h2><div class="scroll"><table><tr><th>Phiên / file</th><th>Phạm vi</th><th>Áp dụng / nhập lúc</th><th>Kiểm tra</th><th></th></tr>'+state.sessions.slice().reverse().map(a=>'<tr><td>'+esc(a.name)+'<br><small>'+esc(a.file)+'</small></td><td>'+esc(scopeName(a.scope))+'</td><td>'+esc(a.date)+'<br>'+when(a.at)+'</td><td>'+a.stats.codes+' mã · '+a.stats.duplicates+' dòng lặp · '+a.stats.conflicts+' xung đột</td><td><button data-open="'+esc(a.id)+'">Mở</button></td></tr>').join('')+'</table></div></section><section class="card"><h2>So sánh với phiên đang chọn</h2>'+(oldId?'<label>Phiên đối chiếu<select id="old">'+peers.map(a=>opt(a.id,a.date+' · '+a.name,oldId)).join('')+'</select></label>'+diffTable(compare(peers.find(a=>a.id===oldId),s)):'<p>Cần hai phiên cùng phạm vi để so sánh.</p>')+'</section>';
+ on('diffKind','change',e=>{
+   const kind=e.target.value;
+   all('[data-diff-kind]').forEach(row=>{row.hidden=Boolean(kind)&&row.dataset.diffKind!==kind});
+ });
  on('old','change',e=>{oldId=e.target.value;render()});all('[data-open]').forEach(el=>el.onclick=()=>{const a=state.sessions.find(s=>s.id===el.dataset.open);shop=a.scope;sid=a.id;tab='search';clear();render()})}
-function diffTable(changes){return '<div class="scroll"><table><tr><th>Mã / thay đổi</th><th>Giá U trước / sau</th><th>Chênh lệch</th><th>Ưu đãi cũ</th><th>Ưu đãi mới</th></tr>'+changes.map(c=>'<tr><td>'+esc(c.code)+'<br>'+esc(c.kind)+'</td><td>'+fmt(c.x.u)+' / '+fmt(c.y.u)+'</td><td>'+(c.delta==null?'—':fmt(c.delta))+' '+(c.pct==null?'':c.pct.toFixed(2)+'%')+'</td><td>'+esc(lines(c.x.promo).join(' · '))+'</td><td>'+esc(lines(c.y.promo).join(' · '))+'</td></tr>').join('')+'</table></div>'+(changes.length?'':'<p>Hai phiên có cùng giá và khuyến mãi.</p>')}
+function diffTable(changes){
+ const counts=new Map();
+ for(const {kind} of changes)counts.set(kind,(counts.get(kind)||0)+1);
+ const filter=changes.length?'<label>Loại thay đổi<select id="diffKind">'+opt('','Tất cả ('+changes.length+')','')+[...counts].map(([kind,n])=>opt(kind,kind+' ('+n+')','')).join('')+'</select></label>':'';
+ return filter+'<div class="scroll"><table><tr><th>Mã / thay đổi</th><th>Giá U trước / sau</th><th>Chênh lệch</th><th>Ưu đãi cũ</th><th>Ưu đãi mới</th></tr>'+changes.map(c=>'<tr data-diff-kind="'+esc(c.kind)+'"><td>'+esc(c.code)+'<br>'+esc(c.kind)+'</td><td>'+fmt(c.x.u)+' / '+fmt(c.y.u)+'</td><td>'+(c.delta==null?'—':fmt(c.delta))+' '+(c.pct==null?'':c.pct.toFixed(2)+'%')+'</td><td>'+esc(lines(c.x.promo).join(' · '))+'</td><td>'+esc(lines(c.y.promo).join(' · '))+'</td></tr>').join('')+'</table></div>'+(changes.length?'':'<p>Hai phiên có cùng giá và khuyến mãi.</p>')}
 
 
 function batchView(){const s=current(),news=tab==='news',ps=Object.values(s.products),before=state.sessions.filter(x=>x.scope===s.scope&&(x.date<s.date||x.date===s.date&&x.at<s.at)).sort((a,b)=>b.date.localeCompare(a.date)||b.at.localeCompare(a.at))[0];const changes=before?compare(before,s):[];
