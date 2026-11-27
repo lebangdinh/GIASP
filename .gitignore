@@ -1,0 +1,10 @@
+*.xlsx
+*.xls
+*.png
+*.jpg
+*.jpeg
+private/
+*.local.json
+node_modules/
+
+/GIASP.html
