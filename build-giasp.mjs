@@ -19,7 +19,7 @@ const scripts = modules.map(name=>{
 });
 function jsonTag(id,value){return '<script type="application/json" id="'+id+'">'+JSON.stringify(value).replaceAll('<','\\u003c')+'</script>'}
 const advancedDoc=read('./app/advanced.html').replace(/<script src="\.\/(vendor\/(?:xlsx\.bundle|chart\.umd)\.js|advanced-bridge\.js|brands\.js)"><\/script>/g,(_,path)=>'<script>'+read('./app/'+path).replace(/<\/script/gi,'<\\/script')+'</script>');
-let html=read('./app/index.html')
+let html=read('./index.html').replace('<base href="./app/">\n','')
   .replace('<script src="./brands.js"></script>',()=>'<script>'+read('./app/brands.js')+'</script>')
   .replace('</head>',()=>jsonTag('advanced-document',advancedDoc)+'</head>')
   .replace(/<link rel="stylesheet" href="\.\/style\.css(?:\?v=[\w-]+)?">/,()=>'<style>'+read('./app/style.css')+'</style>')

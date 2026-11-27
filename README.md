@@ -2,7 +2,7 @@
 
 Ứng dụng web tiếng Việt cho TopZone. File Excel được đọc bằng trình duyệt. Mỗi phiên cùng các xác nhận giá được lưu trong IndexedDB của thiết bị đang dùng.
 
-[Mở ứng dụng trên GitHub Pages](https://lebangdinh.github.io/GIASP/app/) · [Tải bản HTML offline](https://raw.githubusercontent.com/lebangdinh/GIASP/main/C933.html)
+[Mở ứng dụng trên GitHub Pages](https://lebangdinh.github.io/GIASP/) · [Tải bản HTML offline](https://raw.githubusercontent.com/lebangdinh/GIASP/main/C933.html)
 
 ## Bản offline
 
@@ -48,7 +48,7 @@ Chọn shop và phiên cần bàn giao. Vào **Quản lý cụm → Xuất gói 
 
 ## GitHub Pages
 
-Nội dung triển khai tĩnh nằm trong **app/**. Chỉ sao chép nội dung thư mục này vào thư mục phát hành của Pages. Các đường dẫn tài nguyên là đường dẫn tương đối, hỗ trợ triển khai dưới đường dẫn con. Trên bản tĩnh, dùng gói phiên đã chốt để mang dữ liệu riêng lên thiết bị. Giữ file nguồn, gói sao lưu và thư mục **private/** ngoài nội dung phát hành.
+GitHub Pages mở trực tiếp tệp **index.html** ở thư mục gốc. Thư mục **app/** chứa các tài nguyên giao diện và xử lý giá. File Excel và các phiên riêng được nhập trên thiết bị.
 
 Ứng dụng dùng chung giao diện trên máy nhân viên và quản lý. Bản cục bộ chưa có tài khoản, phân quyền hay đồng bộ qua máy chủ.
 
