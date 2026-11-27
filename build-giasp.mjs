@@ -22,7 +22,7 @@ const advancedDoc=read('./app/advanced.html').replace(/<script src="\.\/(vendor\
 let html=read('./app/index.html')
   .replace('<script src="./brands.js"></script>',()=>'<script>'+read('./app/brands.js')+'</script>')
   .replace('</head>',()=>jsonTag('advanced-document',advancedDoc)+'</head>')
-  .replace('<link rel="stylesheet" href="./style.css">',()=>'<style>'+read('./app/style.css')+'</style>')
+  .replace(/<link rel="stylesheet" href="\.\/style\.css(?:\?v=[\w-]+)?">/,()=>'<style>'+read('./app/style.css')+'</style>')
   .replace('<script src="./vendor/jszip.min.js"></script>',()=>bundledData+'<script>'+read('./app/vendor/jszip.min.js')+'</script>')
   .replace('<script type="module" src="./ui.mjs"></script>',()=>'<script type="module">const modules={};try{'+scripts.join('\n')+'}catch(e){document.querySelector("#view").textContent="Không mở được bảng giá. "+e.message;console.error(e)}</script>');
 fs.writeFileSync(new URL(withData?'./GIASP.html':'./C933.html',import.meta.url),html);
