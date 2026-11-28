@@ -91,15 +91,28 @@ export function compare(a,b){if(a.scope!==b.scope)throw Error('Hai phiên phải
 
 
 const colorSuffix=/(?:\s*[-–]\s*|\s+)(?:màu\s+)?(?:xanh(?:\s+(?:lá(?: cây)?|dương|đen|lam|lục|rêu|nhạt|đậm|ngọc|băng))?|đen|trắng|tím(?: đen| nhạt)?|vàng(?: hồng| đồng)?|hồng|đỏ|bạc|xám(?: đen)?|cam|nâu|bạch kim|black|white|blue|green|silver|gold|purple|pink|gray|grey)$/iu;
+function modelAndColor(product){
+ const name=String(value(product).name).trim().normalize('NFC');
+ const suffix=name.match(colorSuffix);
+ if(!suffix)return {model:name,color:''};
+ return {model:name.slice(0,suffix.index).trim(),color:suffix[0].replace(/^[\s–-]+/,'').replace(/^màu\s+/i,'')};
+}
+export function staffList(groups,scope,date){
+ const rows=groups.map(variants=>{
+   const first=variants[0],price=fmt(quote(first).price);
+   if(variants.length===1)return [value(first).name,'Mã '+first.code,price].join(' · ');
+   const colors=variants.map(modelAndColor);
+   return [colors[0].model,'Mã đại diện '+first.code,price,'Màu: '+colors.map(v=>v.color).join(', ')].join(' · ');
+ });
+ return ['Bảng giá · '+scope+' · '+date,...rows].join('\n');
+}
 export function groupColorVariants(products,brandFor){
  const groups=[],byKey=new Map();
  for(const product of products){
-   const name=String(value(product).name).trim().normalize('NFC');
-   const suffix=name.match(colorSuffix),price=quote(product).price;
-   if(!suffix || price==null || product.issues.length){groups.push([product]);continue}
-   const model=name.slice(0,suffix.index).trim().toLocaleLowerCase('vi');
-   const color=suffix[0].replace(/^[\s–-]+/,'').replace(/^màu\s+/i,'').toLocaleLowerCase('vi');
-   const key=JSON.stringify([model,brandFor(product),price]);
+   const variant=modelAndColor(product),price=quote(product).price;
+   if(!variant.color || price==null || product.issues.length){groups.push([product]);continue}
+   const color=variant.color.toLocaleLowerCase('vi');
+   const key=JSON.stringify([variant.model.toLocaleLowerCase('vi'),brandFor(product),price]);
    let buckets=byKey.get(key);
    if(!buckets){buckets=[];byKey.set(key,buckets)}
    let bucket=buckets.find(b=>!b.colors.has(color));
