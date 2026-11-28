@@ -54,7 +54,7 @@ export function renderReport({root,session,scope,dict,esc,opt,detail,send,downlo
     '<div class="report-summary"></div><section class="card"><h2>Phân khúc theo giá báo khách</h2><div class="band-grid"></div></section>'+
     '<section class="card"><h2>Xếp hạng sản phẩm</h2><p class="muted">Giảm từ niêm yết = giá niêm yết − giá khuyến mãi. Giảm thêm = giá khuyến mãi − giá cuối đã xác định. Tỷ lệ giảm thêm tính trên giá khuyến mãi.</p>'+
     '<div class="report-filters"><label>Tên hoặc mã<input data-field="query" type="search"></label>'+
-    select('group','Nhóm phụ kiện',choices(groups))+select('tag','Loại ưu đãi',choices(tags))+
+    select('group','Nhóm sản phẩm',choices(groups))+select('tag','Loại ưu đãi',choices(tags))+
     '<label>Giảm thêm ít nhất (đ)<input type="number" min="0" data-field="amount"></label>'+
     '<label>Giảm thêm ít nhất (%)<input type="number" min="0" step="any" data-field="percent"></label>'+
     select('sort','Sắp xếp',Object.entries(orders))+'</div><div class="actions"><button data-action="reset">Xóa bộ lọc</button></div>'+

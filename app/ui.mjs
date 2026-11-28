@@ -114,30 +114,66 @@ function importView(){
 
 
 let searchStock;
+let priceOrder='none';
+function priceContext(session,stock){
+ const inventory=stock.quantities
+   ? (stock.importedAt && Number.isFinite(new Date(stock.importedAt).getTime()) ? 'Nhập tồn '+when(stock.importedAt) : 'Chưa rõ thời điểm nhập tồn')
+   : stock.note;
+ const applied=session.date.split('-').reverse().join('/');
+ return '<div class="price-context"><span>'+esc(scopeText(session))+'</span><span>Giá áp dụng '+esc(applied)+'</span><span>'+esc(inventory)+'</span></div>';
+}
+function newerSession(session){
+ return available().find(candidate=>candidate.date>session.date || candidate.date===session.date && candidate.at>session.at);
+}
+function bindNewSession(id,next){
+ if(next)click(id,()=>{
+   sid=next.id;selected.clear();detailCode='';oldId='';page=0;
+   $('#dialog').close();tab='search';render();
+ });
+}
+function sortControl(id){
+ const next=priceOrder==='ascending'?'cao xuống thấp':'thấp lên cao';
+ const arrow={none:'↕',ascending:'↑',descending:'↓'}[priceOrder];
+ return '<button type="button" id="'+id+'" class="price-sort" aria-label="Sắp xếp giá báo khách từ '+next+'" title="Sắp xếp từ '+next+'">Giá báo khách '+arrow+'</button>';
+}
 function searchView(){searchStock=stockFor(shop);if(!searchStock.quantities)filters.inStock=false;const s=current();const ps=Object.values(s.products);const tags=[...new Set(ps.flatMap(p=>offers(value(p).promo).flatMap(x=>x.tags)))];
+ const brands=[...new Set(ps.map(p=>C933Brands.resolve(value(p).name,p.code)))].sort((a,b)=>a.localeCompare(b,'vi'));
+ if(!brands.includes(filters.brand))delete filters.brand;
+ const next=newerSession(s);
  const sel=(id,label,vals)=>'<label>'+label+'<select id="'+id+'">'+opt('','Tất cả',filters[id])+vals.map(v=>opt(v,v,filters[id])).join('')+'</select></label>';
  $('#view').innerHTML=title('Tra giá tại quầy',scopeText(s)+' · '+s.date+' · '+s.file)+stats([['Mã sản phẩm',ps.length],['Có giá cuối',ps.filter(hasFinal).length],['Cần kiểm tra',ps.filter(needs).length]])+
- '<section class="card"><label class="search">'+icon('search')+'<input id="query" placeholder="Tìm tên, mã sản phẩm hoặc mã tham chiếu…" value="'+esc(q)+'"></label><div class="row"><label>Ngân sách theo giá báo khách<select id="budget">'+opt('','Mọi mức giá',filters.budget)+budgets.map(([label,min])=>opt(min,label,filters.budget)).join('')+'</select></label><label class="check"><input type="checkbox" id="inStock" '+(filters.inStock?'checked':'')+' '+(searchStock.quantities?'':'disabled')+'>Chỉ mã còn hàng</label></div><small>'+esc(searchStock.note)+'</small><details '+(Object.values(filters).some(Boolean)?'open':'')+'><summary>Bộ lọc sản phẩm</summary><div class="grid">'+sel('cat','Nhóm phụ kiện',categories)+sel('offer','Loại ưu đãi',tags)+sel('status','Trạng thái',['Đặc quyền','Có giá cuối','Cần xác nhận','Cần kiểm tra'])+input('min','Giá từ (đ)','number',filters.min)+input('max','Giá đến (đ)','number',filters.max)+'</div></details></section><section class="card"><h2 id="count"></h2><div id="results"></div></section>';
+ '<section class="card"><label class="search">'+icon('search')+'<input id="query" placeholder="Tìm tên, mã sản phẩm hoặc mã tham chiếu…" value="'+esc(q)+'"></label><div class="row"><label>Ngân sách theo giá báo khách<select id="budget">'+opt('','Mọi mức giá',filters.budget)+budgets.map(([label,min])=>opt(min,label,filters.budget)).join('')+'</select></label><label class="check"><input type="checkbox" id="inStock" '+(filters.inStock?'checked':'')+' '+(searchStock.quantities?'':'disabled')+'>Chỉ mã còn hàng</label></div><small>'+esc(searchStock.note)+'</small><details '+(Object.values(filters).some(Boolean)?'open':'')+'><summary>Bộ lọc sản phẩm</summary><div class="grid">'+sel('cat','Nhóm sản phẩm',categories)+sel('brand','Hãng',brands)+sel('offer','Loại ưu đãi',tags)+sel('status','Trạng thái',['Đặc quyền','Có giá cuối','Cần xác nhận','Cần kiểm tra'])+input('min','Giá từ (đ)','number',filters.min)+input('max','Giá đến (đ)','number',filters.max)+'</div></details></section><section class="card"><div class="panel-top"><h2 id="count"></h2><div>'+priceContext(s,searchStock)+(next?button('latestPrices','Mở bảng mới'):'')+'</div></div><div id="results"></div></section>';
+ bindNewSession('latestPrices',next);
  on('budget','change',e=>{filters.budget=e.target.value;page=0;results()});on('inStock','change',e=>{filters.inStock=e.target.checked;page=0;results()});
- on('query','input',e=>{q=e.target.value;page=0;results()});for(const k of ['cat','offer','status','min','max'])on(k,'input',e=>{filters[k]=e.target.value;page=0;results()});results();
+ on('query','input',e=>{q=e.target.value;page=0;results()});for(const k of ['cat','brand','offer','status','min','max'])on(k,'input',e=>{filters[k]=e.target.value;page=0;results()});results();
 }
 function matches(p,t){return p.code.includes(t)||p.variants.some(({v})=>fold(v.ref).includes(t)||normalize(v.name,state.dict).includes(t)||fold(v.name).includes(t))}
-function results(){const band=budgets.find(([,min])=>String(min)===filters.budget);const s=current(),t=normalize(q,state.dict);const list=Object.values(s.products).filter(p=>{const v=value(p),g=quote(p);return (!band||g.price!=null&&g.price>=band[1]&&g.price<band[2])&&(!filters.inStock||searchStock.quantities?.get(p.code)>0)&&matches(p,t)&&(!filters.cat||category(v.name,state.dict)===filters.cat)&&(!filters.offer||offers(v.promo).some(o=>o.tags.includes(filters.offer)))&&(!filters.min||g.price!=null&&g.price>=Number(filters.min))&&(!filters.max||g.price!=null&&g.price<=Number(filters.max))&&(!filters.status||({'Đặc quyền':v.exclusive,'Có giá cuối':hasFinal(p),'Cần xác nhận':!hasFinal(p)&&needs(p),'Cần kiểm tra':needs(p)})[filters.status])}).sort((a,b)=>Number(b.code===t)-Number(a.code===t)||String(value(a).name).localeCompare(String(value(b).name),'vi'));
- $('#count').textContent=list.length+' sản phẩm';$('#results').innerHTML=list.length?'<table class="catalog"><thead><tr><th>Sản phẩm</th><th>Giá báo khách</th><th>Trạng thái</th></tr></thead><tbody>'+list.slice(page*30,page*30+30).map(p=>{const g=quote(p);return '<tr data-code="'+esc(p.code)+'"><td><button class="product">'+esc(value(p).name)+'</button><br><span class="code">'+esc(p.code)+'</span> · <button class="brand-edit" data-editbrand>'+esc(C933Brands.resolve(value(p).name,p.code))+'</button></td><td><span class="list-price">'+fmt(g.price)+'</span><br><small>'+g.label+'</small></td><td>'+(value(p).exclusive?pill('Đặc quyền'):'')+(hasFinal(p)?pill(p.history.length?'Quản lý xác nhận':'Theo ưu đãi'):needs(p)?pill('Cần kiểm tra',true):'—')+'</td></tr>'}).join('')+'</tbody></table><div class="actions">'+(page?button('prev','Trang trước'):'')+'<small>Trang '+(page+1)+' / '+Math.ceil(list.length/30)+'</small>'+(list.length>(page+1)*30?button('next','Trang sau'):'')+'</div>':'<p class="empty">Không có sản phẩm phù hợp.</p>';all('[data-code]').forEach(el=>el.onclick=e=>{detail(el.dataset.code);if(e.target.closest('[data-editbrand]')){const input=document.querySelector('#manualBrand');input.closest('details').open=true;input.focus()}});click('prev',()=>{page--;results()});click('next',()=>{page++;results()})}
+function results(){const band=budgets.find(([,min])=>String(min)===filters.budget);const s=current(),t=normalize(q,state.dict);const prices=new Map();const list=Object.values(s.products).filter(p=>{const v=value(p),g=quote(p);prices.set(p.code,g.price);return (!band||g.price!=null&&g.price>=band[1]&&g.price<band[2])&&(!filters.inStock||searchStock.quantities?.get(p.code)>0)&&matches(p,t)&&(!filters.brand||C933Brands.resolve(v.name,p.code)===filters.brand)&&(!filters.cat||category(v.name,state.dict)===filters.cat)&&(!filters.offer||offers(v.promo).some(o=>o.tags.includes(filters.offer)))&&(!filters.min||g.price!=null&&g.price>=Number(filters.min))&&(!filters.max||g.price!=null&&g.price<=Number(filters.max))&&(!filters.status||({'Đặc quyền':v.exclusive,'Có giá cuối':hasFinal(p),'Cần xác nhận':!hasFinal(p)&&needs(p),'Cần kiểm tra':needs(p)})[filters.status])}).sort((a,b)=>{
+   if(priceOrder!=='none'){
+     const left=prices.get(a.code),right=prices.get(b.code);
+     if(left==null && right!=null)return 1;
+     if(right==null && left!=null)return -1;
+     if(left!=null && right!=null && left!==right)return priceOrder==='ascending'?left-right:right-left;
+   }
+   return Number(b.code===t)-Number(a.code===t)||String(value(a).name).localeCompare(String(value(b).name),'vi');
+ });
+ $('#count').textContent=list.length+' sản phẩm';$('#results').innerHTML=list.length?'<div class="mobile-price-sort">'+sortControl('mobileSortPrice')+'</div><table class="catalog"><thead><tr><th>Sản phẩm</th><th aria-sort="'+priceOrder+'">'+sortControl('sortPrice')+'</th><th>Trạng thái</th></tr></thead><tbody>'+list.slice(page*30,page*30+30).map(p=>{const g=quote(p);return '<tr data-code="'+esc(p.code)+'"><td><button class="product">'+esc(value(p).name)+'</button><br><span class="code">'+esc(p.code)+'</span> · <button class="brand-edit" data-editbrand>'+esc(C933Brands.resolve(value(p).name,p.code))+'</button></td><td><span class="list-price">'+fmt(g.price)+'</span><br><small>'+g.label+'</small></td><td>'+(value(p).exclusive?pill('Đặc quyền'):'')+(hasFinal(p)?pill(p.history.length?'Quản lý xác nhận':'Theo ưu đãi'):needs(p)?pill('Cần kiểm tra',true):'—')+'</td></tr>'}).join('')+'</tbody></table><div class="actions">'+(page?button('prev','Trang trước'):'')+'<small>Trang '+(page+1)+' / '+Math.ceil(list.length/30)+'</small>'+(list.length>(page+1)*30?button('next','Trang sau'):'')+'</div>':'<p class="empty">Không có sản phẩm phù hợp.</p>';for(const id of ['sortPrice','mobileSortPrice'])click(id,()=>{priceOrder=priceOrder==='ascending'?'descending':'ascending';page=0;results();$('#'+id)?.focus()});all('[data-code]').forEach(el=>el.onclick=e=>{detail(el.dataset.code);if(e.target.closest('[data-editbrand]')){const input=document.querySelector('#manualBrand');input.closest('details').open=true;input.focus()}});click('prev',()=>{page--;results()});click('next',()=>{page++;results()})}
 function detail(code){detailCode=code;const s=current(),p=s.products[code],v=value(p),g=quote(p),os=offers(v.promo),rates=os.filter(o=>o.rate!=null),dialog=$('#dialog');
  const {fromList:amount,extra}=discounts(v,g);
+ const next=newerSession(s);
+ const context=priceContext(s,stockFor(shop))+(next?button('detailLatest','Mở bảng mới'):'');
  const raw='<details><summary>Dòng Excel gốc · '+p.count+' lần xuất hiện</summary>'+p.variants.map(x=>'<p>'+esc(s.file)+' · '+esc(s.sheet)+' · dòng '+x.rows.join(', ')+'</p><pre>'+esc(JSON.stringify(x.cells,null,2))+'</pre>').join('')+'</details>';
- dialog.innerHTML=button('close','Đóng')+'<p class="code">'+esc(code)+'</p><h2>'+esc(v.name)+'</h2><p>'+esc(scopeText(s))+' · '+esc(s.date)+'</p><p class="muted">'+esc(s.name)+' · Nhập '+when(s.at)+'</p>'+
- (p.issues.length?'<div class="card warn"><b>Dữ liệu xung đột</b><p>Trường khác nhau: '+p.issues.map(k=>names[k]||k).join(', ')+'. Đối chiếu các dòng nguồn trước khi báo giá.</p></div>'+raw:
- '<div class="card"><div>'+pill(g.label)+(v.exclusive?pill('Đặc quyền'):'')+(!hasFinal(p)&&needs(p)?pill('Cần xác nhận',true):'')+'</div><div class="price">'+fmt(g.price)+'</div>'+(g.source?'<p>'+esc(g.source)+(g.rate!=null?' · '+esc(g.reason):'')+'</p>':'')+'<p>Giá niêm yết: '+fmt(v.s)+' · Giá khuyến mãi: '+fmt(v.u)+'</p>'+ '<p>Giảm từ niêm yết: '+(amount==null?'Chưa có dữ liệu':fmt(amount))+' · Giảm thêm: '+(extra==null?'Chưa có dữ liệu':fmt(extra))+'</p>'+(amount<0?'<p class="error">Giá khuyến mãi cao hơn giá niêm yết.</p>':'')+'</div>'+
+ dialog.innerHTML=button('close','Đóng')+'<p class="code">'+esc(code)+'</p><h2>'+esc(v.name)+'</h2><p class="muted">'+esc(s.name)+' · Nhập '+when(s.at)+'</p>'+
+ (p.issues.length?context+'<div class="card warn"><b>Dữ liệu xung đột</b><p>Trường khác nhau: '+p.issues.map(k=>names[k]||k).join(', ')+'. Đối chiếu các dòng nguồn trước khi báo giá.</p></div>'+raw:
+ '<div class="card"><div>'+pill(g.label)+(v.exclusive?pill('Đặc quyền'):'')+(!hasFinal(p)&&needs(p)?pill('Cần xác nhận',true):'')+'</div><div class="price">'+fmt(g.price)+'</div>'+context+(g.source?'<p>'+esc(g.source)+(g.rate!=null?' · '+esc(g.reason):'')+'</p>':'')+'<p>Giá niêm yết: '+fmt(v.s)+' · Giá khuyến mãi: '+fmt(v.u)+'</p>'+ '<p>Giảm từ niêm yết: '+(amount==null?'Chưa có dữ liệu':fmt(amount))+' · Giảm thêm: '+(extra==null?'Chưa có dữ liệu':fmt(extra))+'</p>'+(amount<0?'<p class="error">Giá khuyến mãi cao hơn giá niêm yết.</p>':'')+'</div>'+
  '<div class="actions">'+button('customer','Copy báo khách',true)+button('staff','Copy cho nhân viên')+'</div><details><summary>Xem trước nội dung copy</summary><h3>Báo khách</h3><pre>'+esc(message(p,s,scopeText(s)))+'</pre><h3>Cho nhân viên</h3><pre>'+esc(message(p,s,scopeText(s),true))+'</pre></details>'+
  '<h3>Khuyến mãi</h3>'+os.map(o=>'<details><summary>'+esc(o.tags.join(' · ')||'Ưu đãi theo nguồn')+'</summary><p>'+esc(o.source)+'</p></details>').join('')+
  '<details><summary>Thông số sản phẩm</summary><p class="lines">'+esc(lines(v.spec).join('\n')||'Chưa có thông số')+'</p></details><details><summary>Phương án trả chậm</summary>'+plans(v)+'</details>'+raw+
  '<details id="manager"><summary>Quản lý xác nhận giá</summary><div class="form">'+(rates.length?'<label>Ưu đãi tính thử<select id="rate">'+rates.map((o,i)=>opt(i,o.source,0)).join('')+'</select></label><p id="trial"></p><button id="useTrial" type="button">Dùng giá tính thử để xác nhận</button>':'')+input('finalprice','Giá cuối xác nhận (đ)','number',g.price??'')+'<label>Điều kiện gửi khách<textarea id="condition">'+esc(g.condition)+'</textarea></label><label>Lý do xác nhận hoặc sửa giá<textarea id="reason"></textarea></label>'+button('confirmprice','Lưu xác nhận',true)+'</div><h3>Lịch sử xác nhận</h3>'+p.history.slice().reverse().map(h=>'<p>'+when(h.at)+' · '+fmt(h.price)+' · '+esc(h.source)+'</p><small>'+esc(h.reason)+'</small>').join('')+'</details>');
  const brand=C933Brands.resolve(v.name,code);
  dialog.querySelector('h2').insertAdjacentHTML('afterend','<details><summary>Hãng · '+esc(brand)+'</summary><label>Hãng cho mã '+esc(code)+'<input id="manualBrand" list="knownBrands" maxlength="60" value="'+esc(brand==='Chưa xác định'?'':brand)+'"></label><datalist id="knownBrands">'+C933Brands.names.map(n=>'<option value="'+esc(n)+'">').join('')+'</datalist><div class="actions">'+button('saveBrand','Lưu hãng cho mã này')+button('autoBrand','Dùng nhận diện tự động')+'</div></details>');
- click('saveBrand',()=>{const name=$('#manualBrand').value.trim();if(!name)throw Error('Nhập hoặc chọn hãng.');C933Brands.save(code,name);if(tab==='search')results();detail(code);toast('Đã lưu hãng cho '+code)});
- click('autoBrand',()=>{C933Brands.save(code,'');if(tab==='search')results();detail(code);toast('Đã dùng nhận diện tự động')});
+ click('saveBrand',()=>{const name=$('#manualBrand').value.trim();if(!name)throw Error('Nhập hoặc chọn hãng.');C933Brands.save(code,name);if(tab==='search')searchView();detail(code);toast('Đã lưu hãng cho '+code)});
+ click('autoBrand',()=>{C933Brands.save(code,'');if(tab==='search')searchView();detail(code);toast('Đã dùng nhận diện tự động')});
  const timeline=state.sessions.filter(x=>x.scope===s.scope).sort((a,b)=>b.date.localeCompare(a.date)||b.at.localeCompare(a.at));
  const history=document.createElement('details');
  history.innerHTML='<summary>Diễn biến giá qua '+timeline.length+' phiên cùng phạm vi</summary><div class="scroll"><table><tr><th>Phiên</th><th>Giá khuyến mãi</th><th>Giá báo khách</th><th>Khuyến mãi theo nguồn</th></tr>'+timeline.map(x=>{
@@ -149,6 +185,7 @@ function detail(code){detailCode=code;const s=current(),p=s.products[code],v=val
    return '<tr><td>'+esc(x.date)+'<br>'+esc(x.name)+'</td>'+body+'</tr>';
  }).join('')+'</table></div>';
  dialog.append(history);
+ bindNewSession('detailLatest',next);
  $('#close').className='close';click('close',()=>dialog.close());if(!dialog.open)dialog.showModal();dialog.scrollTop=0;
  click('customer',()=>copy(message(p,s,scopeText(s))));click('staff',()=>copy(message(p,s,scopeText(s),true)));
  if($('#rate')){const calc=()=>{const o=rates[Number($('#rate').value)];$('#trial').textContent='Giá tính thử: '+fmt(v.u)+' × '+(100-o.rate)+'% = '+fmt(trial(v.u,o.rate))};calc();on('rate','change',calc);click('useTrial',()=>{const offer=rates[Number($('#rate').value)];$('#finalprice').value=trial(v.u,offer.rate)??'';$('#condition').value=offer.source})}

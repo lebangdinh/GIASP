@@ -37,3 +37,14 @@ test('Tách giảm từ niêm yết và giảm thêm theo giá cuối, kể cả
   assert.deepEqual(discounts(source,{label:'Giá khuyến mãi',price:160000}),{fromList:20000,extra:null,extraPercent:null});
   assert.deepEqual(discounts({s:100,u:0},{label:'Giá cuối',price:0}),{fromList:100,extra:0,extraPercent:null});
 });
+test('Nhận diện thiết bị theo tên sản phẩm và phân biệt phụ kiện đi kèm',()=>{
+ const cases=[
+   ['Galaxy A37 (8G+128G) Đen','Điện thoại'],
+   ['Samsung Galaxy Tab S10 Wi-Fi','Tablet'],
+   ['MacBook Air M3 256GB','Laptop'],
+   ['Cáp sạc cho iPhone','Cáp'],
+   ['Bàn phím cho iPad Air','Bàn phím'],
+   ['Giá đỡ laptop','Giá đỡ']
+ ];
+ for(const [name,expected] of cases)assert.equal(category(name,{}),expected);
+});

@@ -1,5 +1,5 @@
 (()=>{
-const brandNames='Anker|Soundcore|Xmobile|UGREEN|AVA+|Hydrus|Rezo|Havit|Huawei|Kingston|DareU|HIKSEMI|SanDisk|Logitech|Rapoo|Philips|Amazfit|Maxell|INNOSTYLE|JBL|Kioxia|Sony|Baseus|AULA|TP-Link|Ulanzi|Energizer|Apple|Samsung|Xiaomi|OPPO|Vivo|Realme|Honor|Nokia|Motorola|Dell|HP|Asus|Lenovo|Acer|MSI|LG|Panasonic|Toshiba|Daikin|Mitsubishi|Casper|Electrolux|Sharp|Beko|Nagakawa|Aqua|Kangaroo|Sunhouse'.split('|');
+const brandNames='Anker|Soundcore|Xmobile|UGREEN|AVA+|Hydrus|Rezo|Havit|Huawei|Kingston|DareU|HIKSEMI|SanDisk|Logitech|Rapoo|Philips|Amazfit|Maxell|INNOSTYLE|JBL|Kioxia|Sony|Baseus|AULA|TP-Link|Ulanzi|Energizer|Apple|Samsung|Xiaomi|OPPO|Vivo|Realme|Honor|Nokia|Motorola|Tecno|Nubia|Nothing|OnePlus|Dell|HP|Asus|Lenovo|Acer|MSI|LG|Panasonic|Toshiba|Daikin|Mitsubishi|Casper|Electrolux|Sharp|Beko|Nagakawa|Aqua|Kangaroo|Sunhouse'.split('|');
 const brandsByName=new Map(brandNames.map(b=>[b.toLowerCase(),b]));
 const explicitBrand=new RegExp('(?:^|[^a-z0-9])('+brandNames.map(b=>b.replace('+','\\+')).join('|')+')(?=$|[^a-z0-9])','i');
 const brandModels=[
@@ -9,7 +9,7 @@ const brandModels=[
   ['JBL',/\bjblc200si\w*/],['Asus',/\basustuf\w*|\b(?:vivobook|zenbook|rog|tuf)\b/],
   ['Energizer',/\be9[12]bp\d/],['Apple',/\b(?:iphone|ipad|macbook|airpods)\b/],
   ['Samsung',/\bgalaxy\b/],['Xiaomi',/\b(?:redmi|poco)\b/],['OPPO',/\b(?:reno|find x)\b/],
-  ['Motorola',/\bmoto\b/],['Dell',/\b(?:inspiron|xps|alienware)\b/],
+  ['Motorola',/\bmoto\b|^g06 power\b/],['Dell',/\b(?:inspiron|xps|alienware)\b/],
   ['HP',/\b(?:pavilion|elitebook|omen|probook)\b/],['Lenovo',/\b(?:thinkpad|ideapad|legion|yoga)\b/],
   ['Acer',/\b(?:aspire|nitro|predator|swift)\b/]
 ];

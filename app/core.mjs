@@ -19,11 +19,16 @@ const accessoryGroups=[
   ['Bộ chuyển đổi',/adapter chuyen doi/],
   ['Sạc',/\bsac\b/]
 ];
-export const categories=[...accessoryGroups.map(([name])=>name),'Chưa phân loại'];
+const deviceGroups=[
+  ['Tablet',/^(?:may tinh bang|tablet|(?:apple )?ipad|(?:samsung )?galaxy tab|(?:xiaomi |redmi |oppo |honor |oneplus )pad|(?:lenovo )?tab [mp]\d|huawei matepad)\b/],
+  ['Laptop',/^(?:laptop|notebook|ultrabook|(?:apple )?macbook|(?:asus )?(?:vivobook|zenbook)|(?:dell )?(?:inspiron|latitude|xps)|(?:lenovo )?(?:thinkpad|ideapad)|hp (?:pavilion|probook|elitebook)|acer (?:aspire|nitro|swift))\b/],
+  ['Điện thoại',/^(?:dien thoai|smartphone|(?:apple )?iphone|(?:samsung )?galaxy (?:[aszmf]\s?\d|z (?:fold|flip))|(?:xiaomi )?(?:redmi|poco) (?:note |[a-z]?\d)|xiaomi \d|oppo (?:reno|find|[ak]\d)|vivo [vyx]\d|realme (?:note|gt|[cn]?\d)|honor (?:play|magic|[x]?\d)|nubia [avz]\d|tecno (?:spark|pova|camon)|motorola (?:g\d|edge|signature|razr)|g06 power\b|nothing phone|nokia \d)/]
+];
+export const categories=[...deviceGroups.map(([name])=>name),...accessoryGroups.map(([name])=>name),'Chưa phân loại'];
 export function normalize(s,dict){let t=fold(s);for(const [a,b] of Object.entries(dict))if(fold(a))t=t.replaceAll(fold(a),fold(b));return t}
 export function category(s,dict){
   const text=normalize(s,dict);
-  return accessoryGroups.find(([,pattern])=>pattern.test(text))?.[0]||'Chưa phân loại';
+  return deviceGroups.find(([,pattern])=>pattern.test(text))?.[0]||accessoryGroups.find(([,pattern])=>pattern.test(text))?.[0]||'Chưa phân loại';
 }
 export function offers(raw){return lines(raw).map(source=>{const s=fold(source);const m=s.match(/giam(?: them)?\s+(\d+(?:[.,]\d+)?)\s*%/);const rate=m?Number(m[1].replace(',','.')):null;let tags=[];if(rate!=null)tags.push('Giảm '+rate+'%');if(/tra cham.*0%/.test(s))tags.push('Trả chậm 0%');if(/phieu mua hang|\bpmh\b/.test(s))tags.push('Phiếu mua hàng');else if(/tang/.test(s))tags.push('Tặng quà');if(s.includes('khong ap dung udnv'))tags.push('Không áp dụng udnv');return {source,rate,tags}})}
 export function installments(v){return [1,2,3].filter(i=>v['partner'+i]||v['values'+i]).map(i=>{const raw=v['values'+i];const parts=lines(raw);const ok=parts.length===4&&parts.slice(1).every(x=>money(x)!=null)&&lines(v.labels).length===5;return {partner:v['partner'+i],raw,amounts:ok?[parts[0],...parts.slice(1).map(money)]:null}})}
@@ -73,7 +78,8 @@ export function discounts(v,g){
 }
 export const budgets=[
   ['Dưới 100k',0,100000],['100–<200k',100000,200000],['200–<300k',200000,300000],
-  ['300–<500k',300000,500000],['500k–<1 triệu',500000,1000000],['Từ 1 triệu',1000000,Infinity]
+  ['300–<500k',300000,500000],['500k–<1 triệu',500000,1000000],['1–<3 triệu',1000000,3000000],['3–<5 triệu',3000000,5000000],['5–<10 triệu',5000000,10000000],
+  ['10–<20 triệu',10000000,20000000],['20–<30 triệu',20000000,30000000],['Từ 30 triệu',30000000,Infinity]
 ];
 export const hasFinal=p=>quote(p).label==='Giá cuối';
 export function message(p,session,scope,staff=false){const q=quote(p);if(q.price==null)return '';return [value(p).name,q.label+': '+fmt(q.price),q.condition,staff&&('Mã '+p.code+' · '+scope+' · '+session.date),staff&&(session.name+' · '+session.file+' · '+(q.source||'Cột U')),staff&&q.reason].filter(Boolean).join('\n')}

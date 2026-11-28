@@ -11,7 +11,7 @@ export function stockFor(shop){
     const code=stock.items[item].ma;
     quantities.set(code,(quantities.get(code)||0)+sell);
   }
-  return {quantities,note:'Tồn có thể bán · '+stock.file+' · '+(shop==='*'?'toàn cụm':'shop '+shop)};
+  return {quantities,importedAt:stock.at,note:'Tồn có thể bán · '+stock.file+' · '+(shop==='*'?'toàn cụm':'shop '+shop)};
 }
 
 export function daily({root,session,previous,shop,esc,detail,send}){
