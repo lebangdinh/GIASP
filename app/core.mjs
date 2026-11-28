@@ -97,12 +97,24 @@ function modelAndColor(product){
  if(!suffix)return {model:name,color:''};
  return {model:name.slice(0,suffix.index).trim(),color:suffix[0].replace(/^[\s–-]+/,'').replace(/^màu\s+/i,'')};
 }
+function staffOffers(product){
+ const clean=text=>lines(text).map(line=>line.normalize('NFC').replace(/\s+/g,' '));
+ return {promo:clean(value(product).promo),condition:clean(product.history.at(-1)?.condition)};
+}
 export function staffList(groups,scope,date){
  const rows=groups.map(variants=>{
    const first=variants[0],price=fmt(quote(first).price);
-   if(variants.length===1)return [value(first).name,'Mã '+first.code,price].join(' · ');
-   const colors=variants.map(modelAndColor);
-   return [colors[0].model,'Mã đại diện '+first.code,price,'Màu: '+colors.map(v=>v.color).join(', ')].join(' · ');
+   const fields=[value(first).name,'Mã '+first.code,price];
+   if(variants.length>1){
+     const colors=variants.map(modelAndColor);
+     fields.splice(0,2,colors[0].model,'Mã đại diện '+first.code);
+     fields.push('Màu: '+colors.map(v=>v.color).join(', '));
+   }
+   if(first.issues.length){fields.push('Cần kiểm tra dữ liệu xung đột');return fields.join(' · ')}
+   const {promo,condition}=staffOffers(first);
+   fields.push(promo.length?'KM: '+promo.join(' • '):'Chưa ghi khuyến mãi');
+   if(condition.length)fields.push('Điều kiện đã xác nhận: '+condition.join(' • '));
+   return fields.join(' · ');
  });
  return ['Bảng giá · '+scope+' · '+date,...rows].join('\n');
 }
@@ -112,7 +124,7 @@ export function groupColorVariants(products,brandFor){
    const variant=modelAndColor(product),price=quote(product).price;
    if(!variant.color || price==null || product.issues.length){groups.push([product]);continue}
    const color=variant.color.toLocaleLowerCase('vi');
-   const key=JSON.stringify([variant.model.toLocaleLowerCase('vi'),brandFor(product),price]);
+   const key=JSON.stringify([variant.model.toLocaleLowerCase('vi'),brandFor(product),price,Boolean(value(product).exclusive),staffOffers(product)]);
    let buckets=byKey.get(key);
    if(!buckets){buckets=[];byKey.set(key,buckets)}
    let bucket=buckets.find(b=>!b.colors.has(color));

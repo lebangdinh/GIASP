@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {group,quote,confirmPrice,compare,duplicate,offers,trial,money,needs,normalize,category} from '../app/core.mjs';
+import {groupColorVariants,staffList,group,quote,confirmPrice,compare,duplicate,offers,trial,money,needs,normalize,category} from '../app/core.mjs';
 const row=(row,G,U,H='')=>({row,cells:{A:'Sản phẩm thử',G,U,H}});
 const session=(scope,rows)=>({scope,hash:'abc',date:'2026-01-01',...group(rows)});
 test('Giữ mã, phân biệt cùng tên, lưu dòng lặp và chặn báo giá xung đột',()=>{
@@ -47,4 +47,20 @@ test('Nhận diện thiết bị theo tên sản phẩm và phân biệt phụ k
    ['Giá đỡ laptop','Giá đỡ']
  ];
  for(const [name,expected] of cases)assert.equal(category(name,{}),expected);
+});
+
+test('Danh sách nhân viên tách màu theo ưu đãi và điều kiện xác nhận',()=>{
+ const items=['Đen','Trắng','Xanh','Tím','Vàng'].map((color,i)=>{
+   const source=row(i+1,String(i),100,['Tặng cáp','Tặng cáp','Tặng sạc','Tặng cáp',''][i]);
+   source.cells.A='Galaxy thử '+color;
+   return group([source]).products[String(i)];
+ });
+ confirmPrice(items[3],100,'Áp dụng khi mua kèm','QL xác nhận');
+ const groups=groupColorVariants(items,()=>'Samsung');
+ assert.deepEqual(groups.map(g=>g.map(p=>p.code)),[['0','1'],['2'],['3'],['4']]);
+ const rows=staffList(groups,'Shop','2026-11-28').split('\n');
+ assert.match(rows[1],/Màu: Đen, Trắng · KM: Tặng cáp/);
+ assert.match(rows[2],/KM: Tặng sạc/);
+ assert.match(rows[3],/Điều kiện đã xác nhận: Áp dụng khi mua kèm/);
+ assert.match(rows[4],/Chưa ghi khuyến mãi/);
 });
