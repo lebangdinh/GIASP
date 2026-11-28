@@ -1,6 +1,6 @@
 import {stockFor} from './daily.mjs';
 import {advanced} from './advanced.mjs';
-import {staffList,groupColorVariants,budgets,discounts,mapping,group,fold,normalize,category,categories,lines,money,fmt,offers,installments,confirmPrice,quote,hasFinal,message,trial,needs,duplicate,compare,value} from './core.mjs';
+import {staffList,groupColorVariants,budgets,discounts,mapping,group,fold,normalize,category,categories,lines,money,fmt,offers,installments,confirmPrice,quote,hasFinal,message,trial,needs,duplicate,compare,value} from './core.mjs?v=copy-offers-1';
 import {readWorkbook,exportExcel} from './excel.mjs';
 import {renderReport} from './report.mjs';
 import {initial,read,write} from './state.mjs';
