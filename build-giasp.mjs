@@ -15,7 +15,7 @@ let html=read('./index.html').replace('<base href="./app/">\n','')
   .replace('</head>',()=>jsonTag('advanced-document',advancedDoc)+'</head>')
   .replace(/<link rel="stylesheet" href="\.\/style\.css(?:\?v=[\w-]+)?">/,()=>'<style>'+read('./app/style.css')+'</style>')
   .replace('<script src="./vendor/jszip.min.js"></script>',()=>'<script>'+read('./app/vendor/jszip.min.js')+'</script>')
-  .replace('<script type="module" src="./ui.mjs"></script>',()=>'<script type="module">const modules={};try{'+scripts.join('\n')+'}catch(e){document.querySelector("#view").textContent="Không mở được bảng giá. "+e.message;console.error(e)}</script>');
+  .replace('<script type="module" src="./ui.mjs?v=cleanup-2"></script>',()=>'<script type="module">const modules={};try{'+scripts.join('\n')+'}catch(e){document.querySelector("#view").textContent="Không mở được bảng giá. "+e.message;console.error(e)}</script>');
 fs.writeFileSync(new URL(process.argv.includes('--public')?'./C933.html':'./GIASP.html',import.meta.url),html);
 
 

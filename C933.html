@@ -592,10 +592,14 @@ async function sha256(bytes){
  const digest=await crypto.subtle.digest('SHA-256',bytes);
  return Array.from(new Uint8Array(digest),n=>n.toString(16).padStart(2,'0')).join('');
 }
-// Remove only the unchanged session packaged with earlier offline releases.
-const legacy=state.sessions.find(s=>s.id==='9c670684-8d73-444b-b963-4e5d259364ba');
-if(legacy && await sha256(new TextEncoder().encode(JSON.stringify(legacy)))==='552fa89c78c72827dc55da4e3855caac182474d6fbe79e77523168c7c5d67bcb'){
- state.sessions=state.sessions.filter(s=>s!==legacy);
+// Imports from the original workbook can have different session IDs on each device.
+if(!state.retiredNovemberSample){
+ const sampleHash='fb5b18b66b283917974a85ebd6a58ceceadf0fd7a50811c461779845b50977ac';
+ state.sessions=state.sessions.filter(session=>!(
+  session.hash===sampleHash && session.scope==='*' && session.date==='2026-11-27' &&
+  (session.id==='9c670684-8d73-444b-b963-4e5d259364ba' || session.name==='Giá PKTI 933 27-11')
+ ));
+ state.retiredNovemberSample=true;
  await write(state);
 }
 let shop=localStorage.shop||state.defaultShop, sid=localStorage.sid||'',tab=state.sessions.length?'search':'import',draft=null,selected=new Set(),q='',filters={},detailCode='',page=0,oldId='',lookup='';
