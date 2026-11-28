@@ -89,3 +89,22 @@ export const duplicate=(sessions,s)=>sessions.some(t=>['hash','date','scope'].ev
 export function compare(a,b){if(a.scope!==b.scope)throw Error('Hai phiên phải cùng phạm vi.');let changes=[];for(const code of new Set([...Object.keys(a.products),...Object.keys(b.products)])){let old=a.products[code],next=b.products[code];let x=old?value(old):{},y=next?value(next):{};let delta=x.u!=null&&y.u!=null?y.u-x.u:null;let kind=!old?'Mã mới':!next?'Mã vắng':old.issues.length||next.issues.length?'Xung đột':x.u!==y.u?(delta==null?'Thay đổi giá thiếu':delta>0?'Tăng giá':'Giảm giá'):JSON.stringify(lines(x.promo))!==JSON.stringify(lines(y.promo))?'Đổi khuyến mãi':x.s!==y.s?'Đổi giá niêm yết':'';if(kind)changes.push({code,kind,x,y,delta,pct:x.u?delta==null?null:delta/x.u*100:null})}return changes}
 
 
+
+const colorSuffix=/(?:\s*[-–]\s*|\s+)(?:màu\s+)?(?:xanh(?:\s+(?:lá(?: cây)?|dương|đen|lam|lục|rêu|nhạt|đậm|ngọc|băng))?|đen|trắng|tím(?: đen| nhạt)?|vàng(?: hồng| đồng)?|hồng|đỏ|bạc|xám(?: đen)?|cam|nâu|bạch kim|black|white|blue|green|silver|gold|purple|pink|gray|grey)$/iu;
+export function groupColorVariants(products,brandFor){
+ const groups=[],byKey=new Map();
+ for(const product of products){
+   const name=String(value(product).name).trim().normalize('NFC');
+   const suffix=name.match(colorSuffix),price=quote(product).price;
+   if(!suffix || price==null || product.issues.length){groups.push([product]);continue}
+   const model=name.slice(0,suffix.index).trim().toLocaleLowerCase('vi');
+   const color=suffix[0].replace(/^[\s–-]+/,'').replace(/^màu\s+/i,'').toLocaleLowerCase('vi');
+   const key=JSON.stringify([model,brandFor(product),price]);
+   let buckets=byKey.get(key);
+   if(!buckets){buckets=[];byKey.set(key,buckets)}
+   let bucket=buckets.find(b=>!b.colors.has(color));
+   if(!bucket){bucket={colors:new Set(),items:[]};buckets.push(bucket);groups.push(bucket.items)}
+   bucket.colors.add(color);bucket.items.push(product);
+ }
+ return groups;
+}
