@@ -66,6 +66,15 @@ export function quote(p) {
   }
   return {label:'Giá khuyến mãi',price:v.u,condition:benefits.join('\n')};
 }
+export function discounts(v,g){
+  const fromList=v.s!=null && v.u!=null?v.s-v.u:null;
+  const extra=g.label==='Giá cuối' && g.price!=null && v.u!=null?v.u-g.price:null;
+  return {fromList,extra,extraPercent:v.u>0 && extra!=null?100*extra/v.u:null};
+}
+export const budgets=[
+  ['Dưới 100k',0,100000],['100–<200k',100000,200000],['200–<300k',200000,300000],
+  ['300–<500k',300000,500000],['500k–<1 triệu',500000,1000000],['Từ 1 triệu',1000000,Infinity]
+];
 export const hasFinal=p=>quote(p).label==='Giá cuối';
 export function message(p,session,scope,staff=false){const q=quote(p);if(q.price==null)return '';return [value(p).name,q.label+': '+fmt(q.price),q.condition,staff&&('Mã '+p.code+' · '+scope+' · '+session.date),staff&&(session.name+' · '+session.file+' · '+(q.source||'Cột U')),staff&&q.reason].filter(Boolean).join('\n')}
 export const trial=(u,rate)=>u==null?null:Math.round(u*(100-rate)/100);

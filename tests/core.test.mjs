@@ -29,3 +29,11 @@ test('Quy tắc trên giá sau khuyến mãi dùng U, giữ điều kiện và �
  for(const text of [line(16)+'\n'+line(30),'Giảm thêm 16% trên giá sau khuyến mãi khi dùng thẻ X','Tặng PMH mua camera'])assert.equal(quote(item(text)).label,'Giá khuyến mãi');
  assert.equal(quote(item(simple,'')).price,null);
 });
+test('Tách giảm từ niêm yết và giảm thêm theo giá cuối, kể cả khi thiếu giá nguồn',async()=>{
+  const {discounts}=await import('../app/core.mjs');
+  const source={s:180000,u:160000};
+  assert.deepEqual(discounts(source,{label:'Giá cuối',price:134400}),{fromList:20000,extra:25600,extraPercent:16});
+  assert.deepEqual(discounts({...source,s:null},{label:'Giá cuối',price:134400}),{fromList:null,extra:25600,extraPercent:16});
+  assert.deepEqual(discounts(source,{label:'Giá khuyến mãi',price:160000}),{fromList:20000,extra:null,extraPercent:null});
+  assert.deepEqual(discounts({s:100,u:0},{label:'Giá cuối',price:0}),{fromList:100,extra:0,extraPercent:null});
+});

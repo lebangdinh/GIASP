@@ -353,7 +353,7 @@ html[data-t=light],#app[data-t=light]{--bg0:#f3f9fb;--bg2:#faf8fb;--bg3:#f0ebf4;
 #app[data-t=light] .vip-chat-head{background:#114c87}
 @media(max-width:700px){.maintabs{max-width:100%;justify-content:flex-start}.btn,.mtab,.uinp,.msel{min-height:40px}.tbl-wrap,.vip-scroll{max-width:100%;overflow:auto}}
 }
-</style></head>
+</style><style>.accessory-profile label:has(#v83D0209),.accessory-profile label:has(#v83PMH9),.accessory-profile label:has(#v83MS),.accessory-profile label:has(#v83Trade){display:none}</style></head>
 <body>
 <div id="app" data-t="light">
 
@@ -914,6 +914,39 @@ let tplId=58,tplName='Điện Thoại',tplFmt='dt58';
 let rawN=null,rawM=null,allRows=[],activeF='all';
 let sortCol=null,sortDir=1;
 let promoRows=[];
+const isAccessory=()=>tplFmt==='pkti933'||tplFmt==='pk81';
+const accessorySegments=[
+  ['Dưới 100k',0,100000],['100–<200k',100000,200000],['200–<300k',200000,300000],
+  ['300–<500k',300000,500000],['500k–<1 triệu',500000,1000000],['Từ 1 triệu',1000000,Infinity]
+].map(([name,lo,hi])=>({name,n:name,lo,hi,id:lo+'-'+hi}));
+function configureAccessoryMin(id){
+  const node=$(id);if(!node)return;
+  const profile=isAccessory()?'accessories':'general';
+  if(node.dataset.profile===profile)return;
+  if(!node.dataset.original)node.dataset.original=node.innerHTML;
+  node.innerHTML=isAccessory()?'<option value="0">Tất cả</option>'+[10000,20000,50000,100000,200000].map(n=>'<option value="'+n+'">≥ '+(n/1000)+'k</option>').join(''):node.dataset.original;
+  node.dataset.profile=profile;node.value='0';node.dispatchEvent(new Event('change'));
+}
+function configureDealFilters(){
+  configureAccessoryMin('minDiff');configureAccessoryMin('expMD');
+  const range=$('v8PriceRange');
+  if(!range)return;
+  const profile=isAccessory()?'accessories':'general';
+  if(range.dataset.profile===profile)return;
+  range.dataset.profile=profile;
+  document.documentElement.classList.toggle('accessory-profile',isAccessory());
+  const configure=(id,options,initial)=>{
+    const control=$(id);
+    if(!control)return;
+    if(!control.dataset.original)control.dataset.original=control.innerHTML;
+    control.innerHTML=isAccessory()?options.map(([v,label])=>'<option value="'+v+'">'+label+'</option>').join(''):control.dataset.original;
+    if(isAccessory())control.value=initial;
+  };
+  configure('v8PriceRange',[['','Tất cả'],...accessorySegments.map(x=>[x.id,x.name])],'');
+  configure('v8MinSave',[[0,'Mọi mức giảm'],[10000,'Từ 10k'],[20000,'Từ 20k'],[50000,'Từ 50k'],[100000,'Từ 100k']],'0');
+  $('v8MinPct').value=isAccessory()?'0':'0.10';
+  $('v8TopLimit').value=isAccessory()?'9999':'30';
+}
 const PROMO_MIN_PCT=0.05;      // chỉ giữ KM đáng chú ý: giảm từ 5%
 const PROMO_MIN_SAVE=100000;   // và tiết kiệm tối thiểu 100.000đ
 const PROMO_EXPORT_LIMIT=50;   // file gửi nhanh: tối đa 50 deal tốt nhất
@@ -957,7 +990,7 @@ function applyFsz(v){
 function selTpl(id,name,fmt,el){
   document.querySelectorAll('.tcard').forEach(c=>c.classList.remove('on'));
   el.classList.add('on');
-  tplId=id;tplName=name;tplFmt=fmt;
+  tplId=id;tplName=name;tplFmt=fmt;configureAccessoryMin('minDiff');configureAccessoryMin('expMD');
 }
 
 // ═══════════════════════════════════════════════════════
@@ -1101,7 +1134,7 @@ function parseAuto(data,fmt){
       if(!name||!/^\d{1,13}$/.test(ma))return;
       ma=ma.padStart(13,'0');
       gg=pp(row[18]);gi=pp(row[20]);km=String(row[7]??'').trim();
-      if(!p[ma]||km.length>p[ma].km.length)p[ma]={ma,name,gg,gi,km,brand:brandOf(name,ma),noGg:gg==null,pkti:true};
+      if(!p[ma]||km.length>p[ma].km.length)p[ma]={ma,name,gg,gi,km,brand:brandOf(name,ma),noGg:gg==null,pkti:true,deskFinal:row[21] && Object.hasOwn(row[21],'c933Final')?row[21].c933Final:window.sourceFinal(gi,km)};
       return;
     }else if(fmt==='mau96'){
       if(row.length<52)return;
@@ -1744,6 +1777,7 @@ function doPromo(){
   .filter(r=>{
     const f=(typeof promoFinalInfo==='function')?promoFinalInfo(r):{pmhDeduct:0,finalPrice:r.pricePromo,finalSave:r.save,finalPct:r.pctPromo};
     Object.assign(r,f);
+    if(isAccessory())return (r.deskFinal!=null && r.gi!=null && r.deskFinal<r.gi) || r.save>0 || f.pmhDeduct>0 && f.finalSave>0;
     const baseOk=r.save>=PROMO_MIN_SAVE && r.pctPromo>=PROMO_MIN_PCT;
     const finalOk=f.pmhDeduct>0 && f.finalSave>=PROMO_MIN_SAVE && f.finalPct>=PROMO_MIN_PCT;
     return baseOk||finalOk;
@@ -1766,13 +1800,17 @@ function doPromo(){
     const mtBadge=$('mtCatBadge');
     if(mtBadge){mtBadge.classList.remove('pulse');void mtBadge.offsetWidth;mtBadge.classList.add('pulse');}
   }
-  toast(promoRows.length?`✓ Tìm thấy ${promoRows.length} deal đáng gửi${catMsg}`:`Không có deal đủ mạnh (≥ ${(PROMO_MIN_PCT*100).toFixed(0)}% và ≥ ${fmtNum(PROMO_MIN_SAVE)}đ)${catMsg}`,!!promoRows.length);
+  toast(promoRows.length?`✓ Tìm thấy ${promoRows.length} deal đáng gửi${catMsg}` :isAccessory()?'Không có mã có mức giảm dương.':`Không có deal đủ mạnh (≥ ${(PROMO_MIN_PCT*100).toFixed(0)}% và ≥ ${fmtNum(PROMO_MIN_SAVE)}đ)${catMsg}`,!!promoRows.length);
   collapseAllCards();
   renderNoPromoTbl();
 }
+function noPromoRecord(r){
+  if(!r.pkti)return r.noGg===true;
+  return r.gg!=null && r.gi!=null && r.gi>=r.gg && !(r.deskFinal!=null&&r.deskFinal<r.gi) && !r.km?.trim();
+}
 function getNoPromoFiltered(){
   const all=window.allPromoParsed||[];
-  const list=all.filter(r=>r.noGg===true);
+  const list=all.filter(noPromoRecord);
   const brand=$('noPromoBrand')?.value||'';
   const q=($('noPromoSearch')?.value||'').toLowerCase().trim();
   let rows=list;
@@ -1783,7 +1821,7 @@ function getNoPromoFiltered(){
 }
 function renderNoPromoTbl(){
   const all=window.allPromoParsed||[];
-  const list=all.filter(r=>r.noGg===true);
+  const list=all.filter(noPromoRecord);
   const card=$('noPromoCard');
   if(!card)return;
   if(!list.length){card.style.display='none';return;}
@@ -2920,8 +2958,8 @@ function setupAutoDate(){
   window.v8ResetPromoFilters=function(){
     window._v8SelectedBrands=new Set(window._v8Brands);
     if(el('v8BrandSelect'))el('v8BrandSelect').value='';
-    if(el('v8MinPct'))el('v8MinPct').value='0.10';
-    if(el('v8MinSave'))el('v8MinSave').value='500000';
+    if(el('v8MinPct'))el('v8MinPct').value=isAccessory()?'0':'0.10';
+    if(el('v8MinSave'))el('v8MinSave').value=isAccessory()?'0':'500000';
     if(el('v8PriceRange'))el('v8PriceRange').value='';
     if(el('v8PromoType'))el('v8PromoType').value='';
     if(el('promoSearch'))el('promoSearch').value='';
@@ -2930,7 +2968,7 @@ function setupAutoDate(){
   }
   window.v8QuickBest=function(){
     if(el('v8MinPct'))el('v8MinPct').value='0.15';
-    if(el('v8MinSave'))el('v8MinSave').value='1000000';
+    if(el('v8MinSave'))el('v8MinSave').value=isAccessory()?'0':'1000000';
     renderPromoTbl();renderPromoChart();
   }
 
@@ -2938,6 +2976,7 @@ function setupAutoDate(){
   window.doPromo=function(){
     oldDoPromo();
     installPromoPanel();
+    configureDealFilters();
     const allBrandSrc=[...promoRows.map(r=>r.brand),...(window.allPromoParsed||[]).map(r=>r.brand)];
     const brandsChanged=JSON.stringify(window._v8Brands||[])!==JSON.stringify([...new Set(allBrandSrc.filter(Boolean))].sort((a,b)=>a.localeCompare(b,'vi')));
     window._v8Brands=[...new Set(allBrandSrc.filter(Boolean))].sort((a,b)=>a.localeCompare(b,'vi'));
@@ -2962,7 +3001,7 @@ function setupAutoDate(){
     const minSave=+(el('v8MinSave')?.value||PROMO_MIN_SAVE);
     rows=rows.filter(r=>r.save>0 && r.pctPromo>=minPct && r.save>=minSave);
     const pr=el('v8PriceRange')?.value||'';
-    if(pr){const [lo,hi]=pr.split('-').map(Number);rows=rows.filter(r=>(r.gg||0)>=lo&&(r.gg||0)<hi);}
+    if(pr){const [lo,hi]=pr.split('-').map(Number);rows=rows.filter(r=>(r.gg??-1)>=lo&&(r.gg??-1)<hi);}
     const kind=el('v8PromoType')?.value||'';
     if(kind) rows=rows.filter(r=>hasKMText(r,kind));
     const mode=el('promoSort')?.value||'pct';
@@ -2974,8 +3013,8 @@ function setupAutoDate(){
     return rows;
   }
 
-  function dealClass(r,i){if(i===0||r.dealScore>=90)return 'deal-best';if(r.pctPromo>=.18||r.save>=3000000)return 'deal-hot';if(r.pctPromo>=.12||r.save>=1000000)return 'deal-top';return 'deal-good';}
-  function dealLabel(r,i){if(i===0||r.dealScore>=90)return 'BEST DEAL';if(r.pctPromo>=.18||r.save>=3000000)return 'HOT DEAL';if(r.pctPromo>=.12||r.save>=1000000)return 'TOP DEAL';return 'GOOD DEAL';}
+  function dealClass(r,i){if(i===0||(!isAccessory() && r.dealScore>=90))return 'deal-best';if(r.pctPromo>=.18||(!isAccessory()&&r.save>=3000000))return 'deal-hot';if(r.pctPromo>=.12||(!isAccessory()&&r.save>=1000000))return 'deal-top';return 'deal-good';}
+  function dealLabel(r,i){if(i===0||(!isAccessory() && r.dealScore>=90))return 'BEST DEAL';if(r.pctPromo>=.18||(!isAccessory()&&r.save>=3000000))return 'HOT DEAL';if(r.pctPromo>=.12||(!isAccessory()&&r.save>=1000000))return 'TOP DEAL';return 'GOOD DEAL';}
 
   window.renderPromoTbl=function(){
     installPromoPanel();
@@ -3042,9 +3081,9 @@ function setupAutoDate(){
   function tagFor(r,i){return dealLabel(r,i)}
   function colorFor(r,i){
     if(i===0)return {bg:'FEF3C7',fg:'92400E'};
-    if(r.dealScore>=90)return {bg:'FDE68A',fg:'78350F'};
-    if(r.pctPromo>=.18||r.save>=3000000)return {bg:'FEE2E2',fg:'991B1B'};
-    if(r.pctPromo>=.12||r.save>=1000000)return {bg:'DCFCE7',fg:'065F46'};
+    if((isAccessory()?i===0:r.dealScore>=90))return {bg:'FDE68A',fg:'78350F'};
+    if(r.pctPromo>=.18||(!isAccessory()&&r.save>=3000000))return {bg:'FEE2E2',fg:'991B1B'};
+    if(r.pctPromo>=.12||(!isAccessory()&&r.save>=1000000))return {bg:'DCFCE7',fg:'065F46'};
     return {bg:(i%2?'F8FAFC':'FFFFFF'),fg:'334155'};
   }
 
@@ -3185,6 +3224,7 @@ function setupAutoDate(){
   function shortName(s,n=30){s=String(s||'');return s.length>n?s.slice(0,n-1)+'…':s;}
   function activeSegment(){return el('v8PriceRange')?.value||'';}
   function baseRowsForSegment(){
+    if(isAccessory())return window.getPromoFiltered({skipSegment:true});
     let rows=[...(window.promoRows||promoRows||[])];
     const selected=window._v8SelectedBrands||new Set();
     const oldBrand=el('promoBrand')?.value||'';
@@ -3202,11 +3242,11 @@ function setupAutoDate(){
     }
     return rows;
   }
-  function segOf(r){const gg=+(r.gg||0);return SEGMENTS.find(s=>gg>=s.lo&&gg<s.hi);}
+  function segOf(r){const gg=r.gg??-1;return (isAccessory()?accessorySegments:SEGMENTS).find(s=>gg>=s.lo&&gg<s.hi);}
   function segStats(){
     const rows=baseRowsForSegment();
-    return SEGMENTS.map(s=>{
-      const list=rows.filter(r=>{const gg=+(r.gg||0);return gg>=s.lo&&gg<s.hi;});
+    return (isAccessory()?accessorySegments:SEGMENTS).map(s=>{
+      const list=rows.filter(r=>{const gg=r.gg??-1;return gg>=s.lo&&gg<s.hi;});
       const bestAmount=list.length?[...list].sort((a,b)=>(b.save-a.save)||(b.pctPromo-a.pctPromo))[0]:null;
       const bestPct=list.length?[...list].sort((a,b)=>(b.pctPromo-a.pctPromo)||(b.save-a.save))[0]:null;
       const avgPct=list.length?list.reduce((x,r)=>x+r.pctPromo,0)/list.length:0;
@@ -3429,7 +3469,7 @@ function promoFinalInfo(r){
     if(q) rows=rows.filter(r=>String(r.name).toLowerCase().includes(q)||String(r.ma).includes(q)||String(r.km||'').toLowerCase().includes(q));
     const minPct=+(el('v8MinPct')?.value||PROMO_MIN_PCT), minSave=+(el('v8MinSave')?.value||PROMO_MIN_SAVE);
     rows=rows.filter(r=>(r.save||0)>0 && (r.pctPromo||0)>=minPct && (r.save||0)>=minSave);
-    const pr=el('v8PriceRange')?.value||''; if(pr){const [lo,hi]=pr.split('-').map(Number);rows=rows.filter(r=>(r.gg||0)>=lo&&(r.gg||0)<hi);}
+    const pr=el('v8PriceRange')?.value||''; if(pr){const [lo,hi]=pr.split('-').map(Number);rows=rows.filter(r=>(r.gg??-1)>=lo&&(r.gg??-1)<hi);}
     const kind=el('v8PromoType')?.value||''; if(kind) rows=rows.filter(r=>hasKMText2(r,kind));
     const mode=el('promoSort')?.value||'pct';
     rows.sort((a,b)=>{ if(mode==='amount')return (b.save-a.save)||(b.pctPromo-a.pctPromo)||(b.dealScore-a.dealScore); if(mode==='price')return (a.pricePromo-b.pricePromo)||(b.dealScore-a.dealScore); return (b.dealScore-a.dealScore)||(b.pctPromo-a.pctPromo)||(b.save-a.save); });
@@ -3615,7 +3655,7 @@ function promoFinalInfo(r){
     if(opt('v83Installment'))keys.push('installment');
     if(opt('v83D0209'))keys.push('d0209');
     if(opt('v83PMH9'))keys.push('pmh9');
-    return new Set(keys);
+    return new Set(isAccessory()?keys.filter(k=>!['ms365','tradein','d0209','pmh9'].includes(k)):keys);
   }
   function smartFinalInfo(r){
     const gg=+(r?.gg||0), price=+(r?.basePricePromo||r?.pricePromo||r?.gi||r?.gg||0);
@@ -3672,16 +3712,22 @@ function promoFinalInfo(r){
 
   function hasKMType(r,kw){const k=norm(r.km||'');return kw==='gift'?/(tang|qua|loa|voucher|phieu|op|tai nghe|balo)/.test(k):kw==='installment'?/(tra cham|tra gop|lai suat|0%|home|mcredit|fe credit)/.test(k):kw==='voucher'?/(voucher|phieu|coupon|ma giam|cashback|pmh)/.test(k):true;}
   function applySmart(r){
+    if(r.pkti && r.deskFinal!=null && r.gi!=null){
+      const extra=r.gi-r.deskFinal,base=r.gg??r.gi,save=base-r.deskFinal;
+      return {...r,basePricePromo:r.gi,pricePromo:r.deskFinal,finalPrice:r.deskFinal,
+        baseSave:r.save,basePctPromo:r.pctPromo,save,pctPromo:base>0?save/base:0,
+        finalApplied:extra>0,smartDeduct:extra,smartSkipped:[],smartItems:extra>0?[{label:'Giảm thêm theo giá cuối',amount:extra}]:[]};
+    }
     const f=smartFinalInfo(r); const out={...r,basePricePromo:r.basePricePromo||r.pricePromo,baseSave:r.baseSave||r.save,basePctPromo:r.basePctPromo||r.pctPromo,smartItems:f.items,smartSkipped:f.skipped,smartDeduct:f.total,finalPrice:f.finalPrice};
     if(f.applied){out.pricePromo=f.finalPrice;out.save=f.save;out.pctPromo=f.pct;out.finalApplied=true;out.pmhDeduct=f.total;out.dealScore=Math.round((f.pct*100)*60 + Math.min(f.save/100000,50)*40);} return out;
   }
-  window.getPromoFiltered=function(){
+  window.getPromoFiltered=function({skipSegment=false}={}){
     const kind=$id('v8PromoType')?.value||'';
     let rows;
     if(kind==='none'){
       // Không có khuyến mãi = sản phẩm không hề có dữ liệu Giá gốc trong file nguồn (noGg), không áp ngưỡng % giảm / tiền giảm.
       let all=[]; try{all=[...(window.allPromoParsed||[])];}catch(e){all=[];}
-      rows=all.filter(r=>r.noGg===true);
+      rows=all.filter(noPromoRecord);
     }else{
       let base=[]; try{base=[...(window.promoRows||promoRows||[])];}catch(e){base=[];}
       rows=base.map(applySmart);
@@ -3695,11 +3741,11 @@ function promoFinalInfo(r){
       const minPct=+($id('v8MinPct')?.value||window.PROMO_MIN_PCT||0.03), minSave=+($id('v8MinSave')?.value||window.PROMO_MIN_SAVE||0);
       rows=rows.filter(r=>((r.save||0)>0||r.finalApplied) && (r.pctPromo||0)>=minPct && (r.save||0)>=minSave);
     }
-    const pr=$id('v8PriceRange')?.value||''; if(pr){const [lo,hi]=pr.split('-').map(Number);rows=rows.filter(r=>(r.gg||0)>=lo&&(r.gg||0)<hi);}
+    const pr=$id('v8PriceRange')?.value||''; if(pr && !skipSegment){const [lo,hi]=pr.split('-').map(Number);rows=rows.filter(r=>(r.gg??-1)>=lo&&(r.gg??-1)<hi);}
     if(kind&&kind!=='none')rows=rows.filter(r=>hasKMType(r,kind));
     if(opt('v83OnlyMatched'))rows=rows.filter(r=>r.finalApplied);
     const sort=$id('promoSort')?.value||'pct';
-    rows.sort((a,b)=>{if(sort==='amount')return (b.save-a.save)||(b.pctPromo-a.pctPromo)||(b.dealScore-a.dealScore); if(sort==='price')return (a.pricePromo-b.pricePromo)||(b.dealScore-a.dealScore); return (b.dealScore-a.dealScore)||(b.pctPromo-a.pctPromo)||(b.save-a.save);});
+    rows.sort((a,b)=>{if(sort==='amount')return (b.save-a.save)||(b.pctPromo-a.pctPromo)||(b.dealScore-a.dealScore); if(sort==='price')return (a.pricePromo-b.pricePromo)||(b.dealScore-a.dealScore); return (b.pctPromo-a.pctPromo)||(b.save-a.save)||(b.dealScore-a.dealScore);});
     return rows;
   };
   const oldRender=window.renderPromoTbl;
@@ -4295,6 +4341,7 @@ const isLaptop=n=>/laptop|macbook|thinkpad|\bpc\b/.test(n);
 const isLcd=n=>/màn hình|lcd|máy in/.test(n);
 const memo=new Map();
 function calc0209(name,price){
+  if(isAccessory())return 0;
   const n=norm(name); if(!n)return 0;
   const k=n+'|'+(isLaptop(n)?Math.round(price||0):0);
   if(memo.has(k))return memo.get(k);
@@ -4308,6 +4355,7 @@ function calc0209(name,price){
 }
 /* ── PMH Tháng 9 (nguyên bản từ V39) ── */
 function calcPMH9(name,brand,price){
+  if(isAccessory())return 0;
   const n=norm(name), b=norm(brand); price=+price||0;
   if(price<=0)return 0;
   if(/z fold7|z fold8|find n6|razr fold/.test(n))return 3000000;
@@ -4387,8 +4435,8 @@ function renderBi(){
     card(maxPct?(maxPct*100).toFixed(0)+'%':'—','Giảm sâu nhất','cg')+
     card(maxSave?fmtP(maxSave):'—','Tiết kiệm cao nhất','cg')+
     card(nFinal,'Đã trừ ưu đãi','ca','vào giá cuối')+
-    card(n0209,'Có giảm 02/09','cb','tick ở Giá Cuối')+
-    card(nP9,'Có PMH tháng 9','cr','tick ở Giá Cuối');
+    (isAccessory()?'':card(n0209,'Có giảm 02/09','cb','tick ở Giá Cuối')+
+    card(nP9,'Có PMH tháng 9','cr','tick ở Giá Cuối'));
   if(typeof Chart==='undefined')return;
   const app=el('app'), cs=getComputedStyle(app);
   const tc=cs.getPropertyValue('--t2').trim()||'#999', gc=cs.getPropertyValue('--bd').trim()||'#333', ac=cs.getPropertyValue('--ac').trim()||'#4f8ef7';
@@ -4398,11 +4446,12 @@ function renderBi(){
   if(barChart)barChart.destroy();
   const c1=el('v9BarBrand');
   if(c1)barChart=new Chart(c1.getContext('2d'),{type:'bar',data:{labels:top.map(x=>x[0]),datasets:[{label:'Số deal',data:top.map(x=>x[1]),backgroundColor:ac,borderRadius:6}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{precision:0}}}}});
-  const sc=SEGS.map(s=>rows.filter(r=>(r.gg||0)>=s.lo&&(r.gg||0)<s.hi).length);
+  const chartSegments=isAccessory()?accessorySegments:SEGS;
+  const sc=chartSegments.map(s=>rows.filter(r=>(r.gg??-1)>=s.lo&&(r.gg||0)<s.hi).length);
   const idx=sc.map((v,i)=>i).filter(i=>sc[i]>0);
   if(donutChart)donutChart.destroy();
   const c2=el('v9DonutSeg');
-  if(c2)donutChart=new Chart(c2.getContext('2d'),{type:'doughnut',data:{labels:idx.map(i=>SEGS[i].n),datasets:[{data:idx.map(i=>sc[i]),backgroundColor:['#2563eb','#7c3aed','#059669','#d97706','#db2777','#0891b2','#64748b'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:10}}}}}});
+  if(c2)donutChart=new Chart(c2.getContext('2d'),{type:'doughnut',data:{labels:idx.map(i=>chartSegments[i].n),datasets:[{data:idx.map(i=>sc[i]),backgroundColor:['#2563eb','#7c3aed','#059669','#d97706','#db2777','#0891b2','#64748b'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:10}}}}}});
 }
 
 /* ── Gắn vào luồng render của v7 ── */
@@ -4811,7 +4860,7 @@ if(typeof window.switchMainTab==='function'||el('tabPMH')){
     const pb=el('mtBtnPMH');if(pb)pb.classList.toggle('on',tab==='pmh');
     try{localStorage.setItem('bgp_maintab',tab);}catch(e){}
     if(tab==='catalog')renderCatalog();
-    if(tab==='pmh')analyze();
+    if(tab==='pmh'){configureAccessoryMin('pmMin');analyze();}
     if(tab==='stock'&&typeof window.renderStockTab==='function')window.renderStockTab();
     window.scrollTo({top:0,behavior:'smooth'});
   };
@@ -6030,14 +6079,14 @@ function installWriter(){if(typeof XLSX==='undefined'||XLSX._vipWriter)return;co
 const panel=document.createElement('section');panel.id='tabVip';panel.className='hid';panel.innerHTML=`<div class="ps-heading"><div><div class="ps-eyebrow">PHÂN TÍCH & XUẤT FILE</div><h2>Trung tâm báo cáo</h2><p>Chọn đúng nguồn, xem nhanh chỉ số và xuất báo cáo để chia sẻ.</p></div><div class="ps-actions"><button class="btn btn-ac" id="vipReportExport" disabled>↓ Excel 4 sheet</button><button class="btn btn-ghost" id="vipReportHtml" disabled>↓ Báo cáo HTML / In PDF</button></div></div><div class="card"><div class="card-body vip-source-row"><label>Nguồn dữ liệu<select class="uinp" id="vipReportSource"></select></label><button class="btn btn-ghost" id="vipRefresh">↻ Cập nhật</button></div></div><p id="vipReportNote" class="vip-source-note" role="status">Chọn nguồn dữ liệu để bắt đầu.</p><div class="vip-metrics" id="vipMetrics"></div><div class="vip-report-grid"><div class="card"><div class="card-head"><span class="sec-t">Số sản phẩm theo hãng</span></div><div class="card-body" id="vipBrandBars"></div></div><div class="card"><div class="card-head"><span class="sec-t" id="vipTopTitle">Top sản phẩm</span></div><div class="card-body vip-scroll" id="vipTopTable"></div></div></div>`;$('tabCatalog').after(panel);
 const nav=document.createElement('button');nav.id='mtBtnVip';nav.className='mtab';nav.textContent='📊 Báo cáo VIP';nav.onclick=()=>window.switchMainTab('vip');$('mtBtnSessions').after(nav);
 const prevSwitch=window.switchMainTab;window.switchMainTab=function(tab){prevSwitch(tab);panel.classList.toggle('hid',tab!=='vip');nav.classList.toggle('on',tab==='vip');if(tab==='vip'){setSources('vipReportSource');refreshReport();}};
-const chat=document.createElement('aside');chat.id='vipChat';chat.className='hid';chat.setAttribute('aria-label','Trợ lý tra cứu dữ liệu');chat.innerHTML=`<div class="vip-chat-head"><div><b>Trợ lý dữ liệu</b><small>Tìm kiếm và xếp hạng trên dữ liệu của bạn</small></div><button class="btn btn-ghost btn-sm" id="vipChatClose" aria-label="Đóng trợ lý">✕</button></div><label class="vip-chat-source">Nguồn tra cứu<select class="uinp" id="vipChatSource"></select></label><div class="vip-suggestions"><button data-q="top 10 giảm giá">Top giảm giá</button><button data-q="iPhone còn hàng">iPhone còn hàng</button><button data-q="top 5 giá rẻ nhất">Giá thấp nhất</button><button data-q="top 10 tồn kho nhiều nhất">Top tồn kho</button></div><div id="vipMessages" role="log" aria-live="polite"></div><div class="vip-chat-export"><button class="btn btn-ghost btn-sm" id="vipAnswerExport" disabled>↓ Xuất kết quả mới nhất</button><button class="btn btn-ghost btn-sm" id="vipChatClear">Xóa hội thoại</button></div><form id="vipChatForm"><input id="vipQuestion" placeholder="Ví dụ: top 5 iPhone dưới 20 triệu còn hàng" autocomplete="off" aria-label="Câu hỏi tra cứu" maxlength="300"><button class="btn btn-ac" id="vipSend" type="submit">Gửi</button></form><p class="vip-chat-foot">Xử lý ngay trên máy. Hỗ trợ tìm sản phẩm, khoảng giá, mức giảm, biến động và tồn kho.</p>`;$('app').append(chat);
+const chat=document.createElement('aside');chat.id='vipChat';chat.className='hid';chat.setAttribute('aria-label','Trợ lý tra cứu dữ liệu');chat.innerHTML=`<div class="vip-chat-head"><div><b>Trợ lý dữ liệu</b><small>Tìm kiếm và xếp hạng trên dữ liệu của bạn</small></div><button class="btn btn-ghost btn-sm" id="vipChatClose" aria-label="Đóng trợ lý">✕</button></div><label class="vip-chat-source">Nguồn tra cứu<select class="uinp" id="vipChatSource"></select></label><div class="vip-suggestions"><button data-q="top 10 giảm giá">Top giảm giá</button><button data-q="tai nghe còn hàng">tai nghe còn hàng</button><button data-q="top 5 giá rẻ nhất">Giá thấp nhất</button><button data-q="top 10 tồn kho nhiều nhất">Top tồn kho</button></div><div id="vipMessages" role="log" aria-live="polite"></div><div class="vip-chat-export"><button class="btn btn-ghost btn-sm" id="vipAnswerExport" disabled>↓ Xuất kết quả mới nhất</button><button class="btn btn-ghost btn-sm" id="vipChatClear">Xóa hội thoại</button></div><form id="vipChatForm"><input id="vipQuestion" placeholder="Ví dụ: top 5 tai nghe dưới 300k còn hàng" autocomplete="off" aria-label="Câu hỏi tra cứu" maxlength="300"><button class="btn btn-ac" id="vipSend" type="submit">Gửi</button></form><p class="vip-chat-foot">Xử lý ngay trên máy. Hỗ trợ tìm sản phẩm, khoảng giá, mức giảm, biến động và tồn kho.</p>`;$('app').append(chat);
 const launcher=document.createElement('button');launcher.id='vipChatLaunch';launcher.textContent='💬 Hỏi dữ liệu';launcher.onclick=()=>{chat.classList.remove('hid');setSources('vipChatSource');$('vipQuestion').focus();};$('app').append(launcher);
 $('vipChatClose').onclick=()=>chat.classList.add('hid');$('vipChatForm').onsubmit=e=>{e.preventDefault();ask();};chat.querySelectorAll('[data-q]').forEach(b=>b.onclick=()=>ask(b.dataset.q));$('vipChatSource').onchange=()=>{lastQuery='';answer=null;$('vipAnswerExport').disabled=true;chatMessage('Đã đổi nguồn. Nhập yêu cầu để tra cứu dữ liệu mới.');};
 $('vipChatClear').onclick=()=>{$('vipMessages').textContent='';lastQuery='';answer=null;$('vipAnswerExport').disabled=true;};$('vipAnswerExport').onclick=()=>exportXlsx(answer);
 $('vipReportSource').onchange=refreshReport;$('vipRefresh').onclick=refreshReport;$('vipReportExport').onclick=()=>exportXlsx(report);$('vipReportHtml').onclick=()=>exportHtml(report);
 window.addEventListener('price-sessions-updated',()=>{setSources('vipChatSource');setSources('vipReportSource');});
 setSources('vipChatSource');setSources('vipReportSource');installWriter();
-chatMessage('Bạn có thể hỏi “iPhone 15 Pro Max”, “top 10 giảm giá”, “Samsung từ 5 đến 15 triệu còn hàng”. Kết quả luôn ghi nguồn và cách xếp hạng.');
+chatMessage('Bạn có thể hỏi “tai nghe Bluetooth”, “top 10 giảm giá”, “cáp từ 100k đến 300k còn hàng”. Kết quả luôn ghi nguồn và cách xếp hạng.');
 window.VipData={source,queryRows,stats,groups,fromRecords,fromComparison,buildWorkbook,reportHTML,polishWorkbook};
 // Keep existing comparison export buttons, with the new report structure.
 window.doExp=window.doExpFull=function(rows){if(!rows?.length){toast('Không có dữ liệu để xuất',false);return;}exportXlsx({rows:withStock(fromComparison(rows)),label:`${tplName}: ${window._lN||'N'} → ${window._lM||'M'}`,compared:true,stockLabel:stockSource(),generatedAt:date()});};
@@ -6110,7 +6159,7 @@ $('smExport').onclick=()=>{if(!data){toast('Nạp nguồn dữ liệu trước',
 const visibility=[['guideCard','Hướng dẫn'],['statsRow','Thống kê so sánh'],['sumBar','Tóm tắt biến động'],['chartArea','Biểu đồ so sánh'],['promoStats','Thống kê khuyến mãi'],['promoChart','Biểu đồ khuyến mãi'],['vipMetrics','Chỉ số báo cáo'],['vipChatLaunch','Nút chatbox']];const prefs=read('bgp_v12_visibility',{});const menu=document.createElement('details');menu.id='smartVisibility';menu.className='smart-tools';menu.innerHTML='<summary>👁 Menu ẩn / hiện giao diện</summary><div class="smart-columns">'+visibility.map(([id,l])=>`<label><input type="checkbox" data-section="${id}" ${prefs[id]===false?'':'checked'}>${l}</label>`).join('')+'</div><button class="btn btn-ghost" id="smShowAll">Hiện tất cả</button>';$('tabCompare').before(menu);const apply=()=>visibility.forEach(([id])=>$(id)?.classList.toggle('smart-section-hidden',prefs[id]===false));menu.querySelectorAll('[data-section]').forEach(n=>n.onchange=()=>{prefs[n.dataset.section]=n.checked;save('bgp_v12_visibility',prefs);apply();});$('smShowAll').onclick=()=>{visibility.forEach(([id])=>prefs[id]=true);menu.querySelectorAll('input').forEach(n=>n.checked=true);save('bgp_v12_visibility',prefs);apply();};apply();renderColumns();refresh();
 observer=new MutationObserver(()=>{clearTimeout(timer);timer=setTimeout(scan,80);});scan();window.SmartTables={selectRows,compare,matches,exportRows,tableValue,infer};
 })();
-</script><script src="./advanced-bridge.js"></script></body>
+</script><script type="module" src="./advanced-bridge.js"></script></body>
 </html>
 
 

@@ -18,7 +18,8 @@ const scripts = modules.map(name=>{
   return 'modules.'+name+'=await (async()=>{\n'+code+'\nreturn {'+names.join(',')+'};})();';
 });
 function jsonTag(id,value){return '<script type="application/json" id="'+id+'">'+JSON.stringify(value).replaceAll('<','\\u003c')+'</script>'}
-const advancedDoc=read('./app/advanced.html').replace(/<script src="\.\/(vendor\/(?:xlsx\.bundle|chart\.umd)\.js|advanced-bridge\.js|brands\.js)"><\/script>/g,(_,path)=>'<script>'+read('./app/'+path).replace(/<\/script/gi,'<\\/script')+'</script>');
+const advancedBridge=read('./app/advanced-bridge.js').replace("import {quote} from './core.mjs';",()=>read('./app/core.mjs').replace(/^export /gm,''));
+const advancedDoc=read('./app/advanced.html').replace('<script type="module" src="./advanced-bridge.js"></script>',()=>'<script type="module">'+advancedBridge+'</script>').replace(/<script src="\.\/(vendor\/(?:xlsx\.bundle|chart\.umd)\.js|advanced-bridge\.js|brands\.js)"><\/script>/g,(_,path)=>'<script>'+read('./app/'+path).replace(/<\/script/gi,'<\\/script')+'</script>');
 let html=read('./index.html').replace('<base href="./app/">\n','')
   .replace('<script src="./brands.js"></script>',()=>'<script>'+read('./app/brands.js')+'</script>')
   .replace('</head>',()=>jsonTag('advanced-document',advancedDoc)+'</head>')

@@ -1,4 +1,4 @@
-import {value,lines} from './core.mjs';
+import {quote,value,lines} from './core.mjs';
 
 export const workflows = {
   promo:['Xếp hạng khuyến mãi','Lọc deal theo hãng, mức giảm và phân khúc. Xuất ảnh theo hãng để gửi cho shop.','report'],
@@ -14,6 +14,8 @@ function source(session) {
   const rows=Object.values(session.products).filter(p=>!p.issues.length).map(p=>{
     const v=value(p),row=Array(21).fill('');
     row[0]=v.name;row[6]=p.code;row[7]=lines(v.promo).join('\n');row[18]=v.s;row[20]=v.u;
+    const price=quote(p);
+    row[21]={c933Final:price.label==='Giá cuối'?price.price:null};
     return row;
   });
   return {id:session.id,file:session.file,sheet:session.sheet,at:session.at,date:session.date,label:session.name+' · '+session.date,rows};

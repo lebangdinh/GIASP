@@ -1,6 +1,6 @@
 import {fmt,lines,value,quote} from './core.mjs';
 
-function stockFor(shop){
+export function stockFor(shop){
   const stock=JSON.parse(localStorage.getItem('bgp_stock_v1')||'null');
   if(!stock?.rows)return {note:'Chưa nhập bảng tồn kho.'};
   const stores=new Set(stock.stores.flatMap((s,i)=>shop==='*'||String(s.c)===shop?[i]:[]));

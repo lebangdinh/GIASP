@@ -63,3 +63,9 @@ Trong chi tiết sản phẩm, mở **Diễn biến giá** để xem các phiên
 
 Mở **Nghiệp vụ nâng cao** để xếp hạng khuyến mãi, phân tích phiếu mua hàng, đối chiếu tồn kho liên shop, quản lý danh sách sản phẩm và xuất báo cáo Excel bốn sheet. Các màn hình sử dụng phiên bảng giá đang chọn. Tải bảng tồn riêng khi cần tra số lượng có thể bán.
 
+
+## Tra giá phụ kiện theo ngân sách
+
+Trong **Tra giá tại quầy**, chọn ngân sách theo giá báo khách và nhóm phụ kiện. **Chỉ mã còn hàng** dùng số lượng có thể bán trong bảng tồn của shop đang xem, hoặc tổng toàn cụm khi chọn Toàn cụm. Nhập bảng tồn trong Nghiệp vụ nâng cao để bật bộ lọc này.
+
+Báo cáo phân biệt **Giảm từ niêm yết** (giá niêm yết trừ giá khuyến mãi) với **Giảm thêm** (giá khuyến mãi trừ giá cuối đã xác định). Tỷ lệ giảm thêm lấy giá khuyến mãi làm cơ sở. Trường thiếu dữ liệu được để trống trong Excel. Xếp hạng khuyến mãi phụ kiện khởi đầu với mọi mức giảm dương, cho phép lọc tiếp theo số tiền hoặc tỷ lệ.

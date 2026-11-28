@@ -1,6 +1,8 @@
+import {quote} from './core.mjs';
+window.sourceFinal=(u,promo)=>{const g=quote({issues:[],history:[],variants:[{v:{u,promo}}]});return g.label==='Giá cuối'?g.price:null};
 (() => {
   const allowed = new Set(['compare','promo','stock','pmh','catalog','sessions','vip']);
-  let loaded = '';
+  let loaded = '', signature='';
   // The desk sends one normalized row per non-conflicting product. Only the source
   // prices enter the comparison engine. Customer quotes remain in the retail desk.
   function loadSlot(side, source) {
@@ -19,7 +21,8 @@
     if (!allowed.has(mode)) return;
     try {
       if (!current && loaded) {resetAll();loaded='';}
-      if (current && loaded !== current.id) {
+      const prices=current?JSON.stringify(current.rows.map(row=>row[21]?.c933Final)):'';
+      if (current && (loaded !== current.id || prices!==signature)) {
         resetAll();
         document.getElementById('manualCk').checked = false;
         toggleManual();
@@ -28,7 +31,7 @@
         loadSlot('M',current);
         await PriceSessions.registerDesk('M',rawM,current);
         chkReady();
-        loaded = current.id;
+        loaded = current.id;signature=prices;
       }
       if(mode === 'catalog' && rawM) {
         catalogUpsertFromRows(Object.values(PriceSessions.parseSide('M',rawM)),tplName);

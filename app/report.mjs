@@ -1,4 +1,4 @@
-import {category, fmt, normalize, offers, quote, value} from './core.mjs';
+import {discounts,category, fmt, normalize, offers, quote, value} from './core.mjs';
 import {exportExcel} from './excel.mjs';
 
 const bands = [
@@ -7,16 +7,16 @@ const bands = [
   ['500.000 – dưới 1 triệu', 500000, 1000000],
   ['Từ 1 triệu đồng', 1000000, Infinity],
 ];
-const orders = {amount:'Tiền giảm cao nhất', percent:'Tỷ lệ giảm cao nhất', low:'Giá báo thấp nhất', high:'Giá báo cao nhất'};
+const orders = {amount:'Tiền giảm thêm cao nhất', percent:'Tỷ lệ giảm thêm cao nhất', low:'Giá báo thấp nhất', high:'Giá báo cao nhất'};
 const blank = {query:'', group:'', tag:'', band:'', amount:'', percent:'', sort:'amount'};
 const percentText = n => n == null ? '—' : n.toLocaleString('vi-VN',{maximumFractionDigits:2})+'%';
 
 export function reportRows(session, dict) {
   return Object.values(session.products).filter(p=>!p.issues.length).map(p=>{
     const v=value(p), g=quote(p);
-    const amount=v.s!=null && v.u!=null ? v.s-v.u : null;
+    const {fromList,extra:amount,extraPercent:percent}=discounts(v,g);
     return {code:p.code, name:v.name, group:category(v.name,dict), s:v.s, u:v.u, ...g,
-      amount, percent:v.s>0 && amount!=null ? 100*amount/v.s : null,
+      fromList,amount,percent,
       band:bands.findIndex(([,min,max])=>g.price!=null && g.price>=min && g.price<max),
       tags:[...new Set(offers(v.promo).flatMap(o=>o.tags))]};
   });
@@ -52,11 +52,11 @@ export function renderReport({root,session,scope,dict,esc,opt,detail,send,downlo
   const choices=values=>[['','Tất cả'],...values.map(s=>[s,s])];
   root.innerHTML='<div class="title"><div><h1>Phân tích giá</h1><p class="muted">'+esc(scope)+' · '+esc(session.date)+' · '+esc(session.name)+'</p></div></div>'+
     '<div class="report-summary"></div><section class="card"><h2>Phân khúc theo giá báo khách</h2><div class="band-grid"></div></section>'+
-    '<section class="card"><h2>Xếp hạng sản phẩm</h2><p class="muted">Tiền giảm thêm sau khuyến mãi = giá niêm yết S − giá khuyến mãi U. Tỷ lệ giảm tính trên S.</p>'+
+    '<section class="card"><h2>Xếp hạng sản phẩm</h2><p class="muted">Giảm từ niêm yết = giá niêm yết − giá khuyến mãi. Giảm thêm = giá khuyến mãi − giá cuối đã xác định. Tỷ lệ giảm thêm tính trên giá khuyến mãi.</p>'+
     '<div class="report-filters"><label>Tên hoặc mã<input data-field="query" type="search"></label>'+
     select('group','Nhóm phụ kiện',choices(groups))+select('tag','Loại ưu đãi',choices(tags))+
-    '<label>Giảm ít nhất (đ)<input type="number" min="0" data-field="amount"></label>'+
-    '<label>Giảm ít nhất (%)<input type="number" min="0" step="any" data-field="percent"></label>'+
+    '<label>Giảm thêm ít nhất (đ)<input type="number" min="0" data-field="amount"></label>'+
+    '<label>Giảm thêm ít nhất (%)<input type="number" min="0" step="any" data-field="percent"></label>'+
     select('sort','Sắp xếp',Object.entries(orders))+'</div><div class="actions"><button data-action="reset">Xóa bộ lọc</button></div>'+
     '<details><summary>Bộ lọc đã lưu trên máy</summary><div class="row"><label>Tên bộ lọc<input id="presetName" maxlength="64"></label><button data-action="savePreset">Lưu bộ lọc hiện tại</button></div><div class="row"><label>Chọn bộ lọc<select id="presetList"></select></label><button data-action="loadPreset">Áp dụng</button><button data-action="deletePreset">Xóa bộ lọc đã lưu</button></div></details></section>'+
     '<section class="card"><div class="report-head"><h2 id="reportCount"></h2><div class="actions"><button data-action="excel">Xuất bảng Excel</button><button data-action="news" class="primary">Đưa vào bản tin</button></div></div>'+
@@ -89,7 +89,7 @@ export function renderReport({root,session,scope,dict,esc,opt,detail,send,downlo
     find('.band-grid').innerHTML=bands.map(([label],i)=>'<button data-band="'+i+'" aria-pressed="'+(f.band===String(i))+'"><span>'+label+'</span><strong>'+counts[i]+' mã</strong><meter min="0" max="'+Math.max(1,...counts)+'" value="'+counts[i]+'"></meter></button>').join('');
     find('.report-summary').innerHTML='<div class="stats">'+[['Mã trong kết quả',displayed.length],['Giảm thêm sau khuyến mãi',displayed.filter(r=>r.amount>0).length],['Có giá cuối',displayed.filter(r=>r.label==='Giá cuối').length],['Thiếu giá niêm yết',displayed.filter(r=>r.s==null).length]].map(([k,v])=>'<div class="stat"><small>'+k+'</small><strong>'+v+'</strong></div>').join('')+'</div>';
     find('#reportCount').textContent=displayed.length+' sản phẩm';
-    find('.report-table').innerHTML='<table><thead><tr><th>Sản phẩm</th><th>Giá niêm yết</th><th>Giá khuyến mãi</th><th>Giảm thêm sau khuyến mãi</th><th>Giá báo khách</th></tr></thead><tbody>'+displayed.map(r=>'<tr><td><button class="product" data-detail="'+esc(r.code)+'">'+esc(r.name)+'</button><br><small>'+esc(r.code)+' · '+esc(r.group)+'</small></td><td>'+fmt(r.s)+'</td><td>'+fmt(r.u)+'</td><td>'+(r.amount==null?'—':fmt(r.amount))+'<br><small>'+percentText(r.percent)+'</small></td><td><b>'+fmt(r.price)+'</b><br><small>'+esc(r.label)+'</small></td></tr>').join('')+'</tbody></table>';
+    find('.report-table').innerHTML='<table><thead><tr><th>Sản phẩm</th><th>Giá niêm yết</th><th>Giá khuyến mãi</th><th>Giảm từ niêm yết</th><th>Giảm thêm sau khuyến mãi</th><th>Giá báo khách</th></tr></thead><tbody>'+displayed.map(r=>'<tr><td><button class="product" data-detail="'+esc(r.code)+'">'+esc(r.name)+'</button><br><small>'+esc(r.code)+' · '+esc(r.group)+'</small></td><td>'+fmt(r.s)+'</td><td>'+fmt(r.u)+'</td><td>'+(r.fromList==null?'Chưa có dữ liệu':fmt(r.fromList))+'</td><td>'+(r.amount==null?'Chưa có dữ liệu':fmt(r.amount))+'<br><small>'+percentText(r.percent)+'</small></td><td><b>'+fmt(r.price)+'</b><br><small>'+esc(r.label)+'</small></td></tr>').join('')+'</tbody></table>';
     find('#reportNote').textContent=[!displayed.length?'Không có mã phù hợp.':'',session.stats.conflicts?session.stats.conflicts+' mã xung đột đang chờ kiểm tra, đã loại khỏi báo cáo.':''].filter(Boolean).join(' ');
     find('[data-action="excel"]').disabled=!displayed.length;
     const eligible=displayed.filter(r=>r.price!=null);
@@ -116,8 +116,8 @@ export function renderReport({root,session,scope,dict,esc,opt,detail,send,downlo
     }
     if(b.dataset.action==='news')send(displayed.filter(r=>r.price!=null).map(r=>r.code));
     if(b.dataset.action==='excel'){
-      const data=[['Mã','Tên','Nhóm','Giá niêm yết','Giá khuyến mãi','Giảm thêm sau khuyến mãi (đ)','Giảm thêm sau khuyến mãi (%)','Giá báo khách','Nguồn giá','Điều kiện','Shop','Phiên','Ngày'],
-        ...displayed.map(r=>[r.code,r.name,r.group,r.s,r.u,r.amount,r.percent,r.price,r.label,r.condition,scope,session.name,session.date])];
+      const data=[['Mã','Tên','Nhóm','Giá niêm yết','Giá khuyến mãi','Giảm từ niêm yết (đ)','Giảm thêm sau khuyến mãi (đ)','Giảm thêm sau khuyến mãi (%)','Giá báo khách','Nguồn giá','Điều kiện','Shop','Phiên','Ngày'],
+        ...displayed.map(r=>[r.code,r.name,r.group,r.s,r.u,r.fromList,r.amount,r.percent,r.price,r.label,r.condition,scope,session.name,session.date])];
       download(await exportExcel(data,'Phân tích giá'),'Phan-tich-gia-'+session.date+'.xlsx');
     }
   });
