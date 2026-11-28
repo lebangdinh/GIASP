@@ -36,10 +36,6 @@ Khi cột H có mức giảm trên giá sau khuyến mãi theo quy tắc đượ
 
 **Copy báo khách** lấy nhãn và giá đang hiển thị. **Copy cho nhân viên** bổ sung mã, nguồn và ghi chú. So sánh hai phiên tại **Lịch sử phiên**. Trong **Bản tin cho shop**, chọn mã bằng ô tìm hoặc nút chọn nhanh, đọc bản xem trước, rồi copy gửi Zalo hoặc xuất Excel.
 
-## In tem
-
-Chọn **Xem tem** trong chi tiết sản phẩm hoặc chọn nhiều mã tại **In tem sản phẩm**. Chọn loại tem và nhập kích thước theo mm. Tem nguồn hiển thị giá niêm yết và giá khuyến mãi. Tem cuối chỉ in mã đã xác nhận. Nếu nội dung quá dài, điều chỉnh kích thước trong bản xem trước. Chọn đúng khổ giấy, tỷ lệ 100%, tắt đầu trang và chân trang trong hộp thoại của trình duyệt. In thử một tem khi đổi máy in hoặc giấy.
-
 ## Chuyển sang máy nhân viên
 
 Chọn shop và phiên cần bàn giao. Vào **⚙ Cài đặt shop và sao lưu → Xuất gói phiên đang xem**. Chuyển file JSON cho máy nhân viên, mở ứng dụng trên máy đó rồi chọn **Nhập gói / khôi phục**. Kiểm tra shop, ngày, phiên và một mã đã xác nhận. Gói chứa dữ liệu nguồn và lịch sử quản lý, cần chuyển qua kênh nội bộ.
@@ -65,5 +61,5 @@ Trong chi tiết sản phẩm, mở **Diễn biến giá** để xem các phiên
 
 ## Nghiệp vụ nâng cao
 
-Mở **Nghiệp vụ nâng cao** để xếp hạng khuyến mãi, phân tích phiếu mua hàng, đối chiếu tồn kho liên shop, quản lý danh sách in và xuất báo cáo Excel bốn sheet. Các màn hình sử dụng phiên bảng giá đang chọn. Tải bảng tồn riêng khi cần tra số lượng có thể bán.
+Mở **Nghiệp vụ nâng cao** để xếp hạng khuyến mãi, phân tích phiếu mua hàng, đối chiếu tồn kho liên shop, quản lý danh sách sản phẩm và xuất báo cáo Excel bốn sheet. Các màn hình sử dụng phiên bảng giá đang chọn. Tải bảng tồn riêng khi cần tra số lượng có thể bán.
 

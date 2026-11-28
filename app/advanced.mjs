@@ -5,7 +5,7 @@ export const workflows = {
   pmh:['Phiếu mua hàng','Đọc điều kiện từng phiếu, xem mệnh giá và khoản có thể quy đổi.','file'],
   stock:['Tồn kho liên shop','Nhập bảng tồn, xem số lượng có thể bán theo mã, siêu thị và trạng thái.','shops'],
   compare:['So sánh hai bảng giá','Đặt hai ngày cạnh nhau để tìm mã tăng, giảm, mới hoặc ngừng khuyến mãi.','history'],
-  catalog:['Danh mục & danh sách in','Chọn mã, lưu danh sách theo tên và xuất Excel theo mẫu in giá.','print'],
+  catalog:['Danh mục sản phẩm','Chọn mã, lưu danh sách theo tên và xuất danh sách mã ra Excel.','file'],
   vip:['Báo cáo & tra cứu','Lọc nhiều điều kiện, hỏi dữ liệu và xuất báo cáo Excel bốn sheet hoặc HTML.','report'],
   sessions:['Kho file so sánh','Mở lại file đã tải trong màn hình so sánh, chọn cặp phiên hoặc sao lưu.','history']
 };

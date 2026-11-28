@@ -465,7 +465,7 @@ html[data-t=light],#app[data-t=light]{--bg0:#f3f9fb;--bg2:#faf8fb;--bg3:#f0ebf4;
     <span class="sec-t">Danh mục sản phẩm</span>
     <span id="catBadge" style="font-size:10px;color:var(--t2);background:var(--bg3);padding:2px 8px;border-radius:20px;margin-left:6px"></span>
     <div style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap">
-      <button class="btn btn-gn btn-sm" onclick="catExportExcel()" title="Xuất Mã SP đang lọc ra file Excel (Mẫu in giá)">📤 Xuất Excel</button>
+      <button class="btn btn-gn btn-sm" onclick="catExportExcel()" title="Xuất Mã SP đang lọc ra file Excel">📤 Xuất Excel</button>
       <button class="btn btn-ghost btn-sm" onclick="catalogClearAll()" title="Xoá toàn bộ danh mục">🗑 Xoá tất cả</button>
       <button class="btn btn-ghost btn-sm" onclick="toggleCard('catCardBody',this)">▲ Ẩn</button>
     </div>
@@ -1525,7 +1525,7 @@ function renderCatalogLists(){
       </div>
       <button class="btn btn-gn btn-sm" onclick="catListView('${safe}')" title="Xem danh sách này trong bảng Danh mục">👁 Xem</button>
       <button class="btn btn-ghost btn-sm" onclick="catListUpdateFromSelection('${safe}')" title="Cập nhật danh sách này bằng các SP đang tick chọn ở bảng trên">🔄 Cập nhật</button>
-      <button class="btn btn-ghost btn-sm" onclick="catListExportExcel('${safe}')" title="Xuất Excel (Mẫu in giá)">📤 Xuất Excel</button>
+      <button class="btn btn-ghost btn-sm" onclick="catListExportExcel('${safe}')" title="Xuất Excel">📤 Xuất Excel</button>
       <button class="btn btn-ghost btn-sm" onclick="catListRename('${safe}')" title="Đổi tên">✏ Đổi tên</button>
       <button class="btn btn-ghost btn-sm" onclick="catListDelete('${safe}')" title="Xoá">🗑 Xoá</button>
     </div>`;
@@ -1545,7 +1545,7 @@ function catExportExcel(){
   XLSX.utils.book_append_sheet(wb,ws,'Sheet1');
   const today=new Date().toLocaleDateString('vi-VN').replace(/\//g,'-');
   const groupTag=catActiveGroup?'_'+catActiveGroup.replace(/[\s–—\/]+/g,'_'):'';
-  XLSX.writeFile(wb,`MauInGia${groupTag}_${today}.xlsx`,{cellStyles:true});
+  XLSX.writeFile(wb,`DanhMuc${groupTag}_${today}.xlsx`,{cellStyles:true});
   toast(`✓ Đã xuất ${list.length} mã sản phẩm ra Excel`);
 }
 
