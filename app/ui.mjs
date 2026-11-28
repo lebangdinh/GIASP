@@ -114,6 +114,7 @@ function importView(){
 
 
 let searchStock;
+let copyOffers=localStorage.getItem('c933.copyOffers')==='1';
 let groupColors=localStorage.getItem('c933.groupColors')==='1';
 let priceOrder='none';
 function priceContext(session,stock){
@@ -143,8 +144,9 @@ function searchView(){searchStock=stockFor(shop);if(!searchStock.quantities)filt
  const next=newerSession(s);
  const sel=(id,label,vals)=>'<label>'+label+'<select id="'+id+'">'+opt('','Tất cả',filters[id])+vals.map(v=>opt(v,v,filters[id])).join('')+'</select></label>';
  $('#view').innerHTML=title('Tra giá tại quầy',scopeText(s)+' · '+s.date+' · '+s.file)+stats([['Mã sản phẩm',ps.length],['Có giá cuối',ps.filter(hasFinal).length],['Cần kiểm tra',ps.filter(needs).length]])+
- '<section class="card"><label class="search">'+icon('search')+'<input id="query" placeholder="Tìm tên, mã sản phẩm hoặc mã tham chiếu…" value="'+esc(q)+'"></label><div class="row"><label>Ngân sách theo giá báo khách<select id="budget">'+opt('','Mọi mức giá',filters.budget)+budgets.map(([label,min])=>opt(min,label,filters.budget)).join('')+'</select></label><label class="check"><input type="checkbox" id="inStock" '+(filters.inStock?'checked':'')+' '+(searchStock.quantities?'':'disabled')+'>Chỉ mã còn hàng</label><label class="check"><input type="checkbox" id="groupColors" '+(groupColors?'checked':'')+'>Gộp màu cùng giá</label></div><small>'+esc(searchStock.note)+'</small><details '+(Object.values(filters).some(Boolean)?'open':'')+'><summary>Bộ lọc sản phẩm</summary><div class="grid">'+sel('cat','Nhóm sản phẩm',categories)+sel('brand','Hãng',brands)+sel('offer','Loại ưu đãi',tags)+sel('status','Trạng thái',['Đặc quyền','Có giá cuối','Cần xác nhận','Cần kiểm tra'])+input('min','Giá từ (đ)','number',filters.min)+input('max','Giá đến (đ)','number',filters.max)+'</div></details></section><section class="card"><div class="panel-top"><h2 id="count"></h2>'+button('copyFiltered','Copy danh sách gửi nhân viên')+'<div>'+priceContext(s,searchStock)+(next?button('latestPrices','Mở bảng mới'):'')+'</div></div><div id="results"></div></section>';
+ '<section class="card"><label class="search">'+icon('search')+'<input id="query" placeholder="Tìm tên, mã sản phẩm hoặc mã tham chiếu…" value="'+esc(q)+'"></label><div class="row"><label>Ngân sách theo giá báo khách<select id="budget">'+opt('','Mọi mức giá',filters.budget)+budgets.map(([label,min])=>opt(min,label,filters.budget)).join('')+'</select></label><label class="check"><input type="checkbox" id="inStock" '+(filters.inStock?'checked':'')+' '+(searchStock.quantities?'':'disabled')+'>Chỉ mã còn hàng</label><label class="check"><input type="checkbox" id="groupColors" '+(groupColors?'checked':'')+'>Gộp màu cùng giá</label></div><small>'+esc(searchStock.note)+'</small><details '+(Object.values(filters).some(Boolean)?'open':'')+'><summary>Bộ lọc sản phẩm</summary><div class="grid">'+sel('cat','Nhóm sản phẩm',categories)+sel('brand','Hãng',brands)+sel('offer','Loại ưu đãi',tags)+sel('status','Trạng thái',['Đặc quyền','Có giá cuối','Cần xác nhận','Cần kiểm tra'])+input('min','Giá từ (đ)','number',filters.min)+input('max','Giá đến (đ)','number',filters.max)+'</div></details></section><section class="card"><div class="panel-top"><h2 id="count"></h2><div class="actions"><label class="check"><input id="copyOffers" type="checkbox" '+(copyOffers?'checked':'')+'>Kèm khuyến mãi khi copy</label>'+button('copyFiltered','Copy danh sách gửi nhân viên')+'</div><div>'+priceContext(s,searchStock)+(next?button('latestPrices','Mở bảng mới'):'')+'</div></div><div id="results"></div></section>';
  bindNewSession('latestPrices',next);
+ on('copyOffers','change',e=>{copyOffers=e.target.checked;localStorage.setItem('c933.copyOffers',copyOffers?'1':'0')});
  on('groupColors','change',e=>{groupColors=e.target.checked;localStorage.setItem('c933.groupColors',groupColors?'1':'0');page=0;results()});
  on('budget','change',e=>{filters.budget=e.target.value;page=0;results()});on('inStock','change',e=>{filters.inStock=e.target.checked;page=0;results()});
  on('query','input',e=>{q=e.target.value;page=0;results()});for(const k of ['cat','brand','offer','status','min','max'])on(k,'input',e=>{filters[k]=e.target.value;page=0;results()});results();
@@ -162,7 +164,7 @@ function results(){const band=budgets.find(([,min])=>String(min)===filters.budge
  const list=groupColors?groupColorVariants(filtered,p=>C933Brands.resolve(value(p).name,p.code)):filtered.map(p=>[p]);
  const copyButton=$('#copyFiltered');
  copyButton.disabled=!list.length;
- copyButton.onclick=guarded(()=>copy(staffList(list,scopeText(s),s.date)));
+ copyButton.onclick=guarded(()=>copy(staffList(list,scopeText(s),s.date,copyOffers)));
  $('#count').textContent=list.length===filtered.length?list.length+' sản phẩm':list.length+' dòng đại diện · '+filtered.length+' mã';$('#results').innerHTML=list.length?'<div class="mobile-price-sort">'+sortControl('mobileSortPrice')+'</div><table class="catalog"><thead><tr><th>Sản phẩm</th><th aria-sort="'+priceOrder+'">'+sortControl('sortPrice')+'</th><th>Trạng thái</th></tr></thead><tbody>'+list.slice(page*30,page*30+30).map(variants=>{
    const p=variants[0],g=quote(p);
    const choices=variants.length>1?'<details class="variant-list"><summary>Xem '+variants.length+' mã màu</summary>'+variants.map(v=>'<button data-color-code="'+esc(v.code)+'">'+esc(value(v).name)+' · '+esc(v.code)+'</button>').join('')+'</details>':'';

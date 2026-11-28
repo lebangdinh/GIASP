@@ -63,4 +63,8 @@ test('Danh sách nhân viên tách màu theo ưu đãi và điều kiện xác n
  assert.match(rows[2],/KM: Tặng sạc/);
  assert.match(rows[3],/Điều kiện đã xác nhận: Áp dụng khi mua kèm/);
  assert.match(rows[4],/Chưa ghi khuyến mãi/);
+ const brief=staffList(groups,'Shop','2026-11-28',false).split('\n');
+ assert.equal(brief.length,rows.length);
+ assert.match(brief[1],/Mã đại diện 0 · 100đ · Màu: Đen, Trắng$/);
+ assert.doesNotMatch(brief.join('\n'),/Tặng|KM:|Điều kiện đã xác nhận|Chưa ghi khuyến mãi/);
 });

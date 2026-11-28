@@ -101,7 +101,7 @@ function staffOffers(product){
  const clean=text=>lines(text).map(line=>line.normalize('NFC').replace(/\s+/g,' '));
  return {promo:clean(value(product).promo),condition:clean(product.history.at(-1)?.condition)};
 }
-export function staffList(groups,scope,date){
+export function staffList(groups,scope,date,includeOffers=true){
  const rows=groups.map(variants=>{
    const first=variants[0],price=fmt(quote(first).price);
    const fields=[value(first).name,'Mã '+first.code,price];
@@ -111,6 +111,7 @@ export function staffList(groups,scope,date){
      fields.push('Màu: '+colors.map(v=>v.color).join(', '));
    }
    if(first.issues.length){fields.push('Cần kiểm tra dữ liệu xung đột');return fields.join(' · ')}
+   if(!includeOffers)return fields.join(' · ');
    const {promo,condition}=staffOffers(first);
    fields.push(promo.length?'KM: '+promo.join(' • '):'Chưa ghi khuyến mãi');
    if(condition.length)fields.push('Điều kiện đã xác nhận: '+condition.join(' • '));
