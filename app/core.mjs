@@ -119,6 +119,24 @@ export function staffList(groups,scope,date,includeOffers=true){
  });
  return ['Bảng giá · '+scope+' · '+date,...rows].join('\n');
 }
+export function counterExportRows(groups,brandFor,scope,date,includeOffers){
+ const header=['Sản phẩm','Mã sản phẩm / đại diện','Hãng','Màu','Giá báo khách (đ)','Loại giá','Trạng thái','Phạm vi','Ngày áp dụng'];
+ if(includeOffers)header.push('Khuyến mãi','Điều kiện đã xác nhận');
+ const rows=groups.map(variants=>{
+   const first=variants[0],v=value(first),g=quote(first),colors=variants.map(modelAndColor);
+   const status=[];
+   if(v.exclusive)status.push('Đặc quyền');
+   if(hasFinal(first))status.push(first.history.length?'Quản lý xác nhận':'Theo ưu đãi');
+   else if(needs(first))status.push('Cần kiểm tra');
+   const row=[variants.length>1?colors[0].model:v.name,first.code,brandFor(first),colors.map(x=>x.color).filter(Boolean).join(', '),g.price,g.label,status.join(' · '),scope,date];
+   if(includeOffers){
+     const {promo,condition}=staffOffers(first);
+     row.push(first.issues.length?'Cần kiểm tra dữ liệu xung đột':promo.join(' • '),condition.join(' • '));
+   }
+   return row;
+ });
+ return [header,...rows];
+}
 export function groupColorVariants(products,brandFor){
  const groups=[],byKey=new Map();
  for(const product of products){

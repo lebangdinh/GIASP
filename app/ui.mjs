@@ -1,6 +1,6 @@
 import {stockFor} from './daily.mjs';
 import {advanced} from './advanced.mjs';
-import {staffList,groupColorVariants,budgets,discounts,mapping,group,fold,normalize,category,categories,lines,money,fmt,offers,installments,confirmPrice,quote,hasFinal,message,trial,needs,duplicate,compare,value} from './core.mjs?v=copy-offers-1';
+import {counterExportRows,staffList,groupColorVariants,budgets,discounts,mapping,group,fold,normalize,category,categories,lines,money,fmt,offers,installments,confirmPrice,quote,hasFinal,message,trial,needs,duplicate,compare,value} from './core.mjs?v=counter-export-1';
 import {readWorkbook,exportExcel} from './excel.mjs';
 import {renderReport} from './report.mjs';
 import {initial,read,write} from './state.mjs';
@@ -147,7 +147,7 @@ function searchView(){searchStock=stockFor(shop);if(!searchStock.quantities)filt
  const next=newerSession(s);
  const sel=(id,label,vals)=>'<label>'+label+'<select id="'+id+'">'+opt('','Tất cả',filters[id])+vals.map(v=>opt(v,v,filters[id])).join('')+'</select></label>';
  $('#view').innerHTML=title('Tra giá tại quầy',scopeText(s)+' · '+s.date+' · '+s.file)+stats([['Mã sản phẩm',ps.length],['Có giá cuối',ps.filter(hasFinal).length],['Cần kiểm tra',ps.filter(needs).length]])+
- '<section class="card"><label class="search">'+icon('search')+'<input id="query" placeholder="Tìm tên, mã sản phẩm hoặc mã tham chiếu…" value="'+esc(q)+'"></label><div class="row"><label>Ngân sách theo giá báo khách<select id="budget">'+opt('','Mọi mức giá',filters.budget)+budgets.map(([label,min])=>opt(min,label,filters.budget)).join('')+'</select></label><label class="check"><input type="checkbox" id="inStock" '+(filters.inStock?'checked':'')+' '+(searchStock.quantities?'':'disabled')+'>Chỉ mã còn hàng</label><label class="check"><input type="checkbox" id="groupColors" '+(groupColors?'checked':'')+'>Gộp màu cùng giá</label></div><small>'+esc(searchStock.note)+'</small><details '+(Object.values(filters).some(Boolean)?'open':'')+'><summary>Bộ lọc sản phẩm</summary><div class="grid">'+sel('cat','Nhóm sản phẩm',categories)+brandPicker+sel('offer','Loại ưu đãi',tags)+sel('status','Trạng thái',['Đặc quyền','Có giá cuối','Cần xác nhận','Cần kiểm tra'])+input('min','Giá từ (đ)','number',filters.min)+input('max','Giá đến (đ)','number',filters.max)+'</div></details></section><section class="card"><div class="panel-top"><h2 id="count"></h2><div class="actions"><label class="check"><input id="copyOffers" type="checkbox" '+(copyOffers?'checked':'')+'>Kèm khuyến mãi khi copy</label>'+button('copyFiltered','Copy danh sách gửi nhân viên')+'</div><div>'+priceContext(s,searchStock)+(next?button('latestPrices','Mở bảng mới'):'')+'</div></div><div id="results"></div></section>';
+ '<section class="card"><label class="search">'+icon('search')+'<input id="query" placeholder="Tìm tên, mã sản phẩm hoặc mã tham chiếu…" value="'+esc(q)+'"></label><div class="row"><label>Ngân sách theo giá báo khách<select id="budget">'+opt('','Mọi mức giá',filters.budget)+budgets.map(([label,min])=>opt(min,label,filters.budget)).join('')+'</select></label><label class="check"><input type="checkbox" id="inStock" '+(filters.inStock?'checked':'')+' '+(searchStock.quantities?'':'disabled')+'>Chỉ mã còn hàng</label><label class="check"><input type="checkbox" id="groupColors" '+(groupColors?'checked':'')+'>Gộp màu cùng giá</label></div><small>'+esc(searchStock.note)+'</small><details '+(Object.values(filters).some(Boolean)?'open':'')+'><summary>Bộ lọc sản phẩm</summary><div class="grid">'+sel('cat','Nhóm sản phẩm',categories)+brandPicker+sel('offer','Loại ưu đãi',tags)+sel('status','Trạng thái',['Đặc quyền','Có giá cuối','Cần xác nhận','Cần kiểm tra'])+input('min','Giá từ (đ)','number',filters.min)+input('max','Giá đến (đ)','number',filters.max)+'</div></details></section><section class="card"><div class="panel-top"><h2 id="count"></h2><div class="actions"><label class="check"><input id="copyOffers" type="checkbox" '+(copyOffers?'checked':'')+'>Kèm khuyến mãi khi copy / xuất Excel</label>'+button('copyFiltered','Copy danh sách gửi nhân viên')+button('exportFiltered','Xuất Excel')+'</div><div>'+priceContext(s,searchStock)+(next?button('latestPrices','Mở bảng mới'):'')+'</div></div><div id="results"></div></section>';
  const brandBoxes=all('[data-brand-choice]');
  function applyBrands(){
    const selected=brandBoxes.filter(box=>box.checked).map(box=>box.value);
@@ -173,6 +173,12 @@ function results(){const band=budgets.find(([,min])=>String(min)===filters.budge
    return Number(b.code===t)-Number(a.code===t)||String(value(a).name).localeCompare(String(value(b).name),'vi');
  });
  const list=groupColors?groupColorVariants(filtered,p=>C933Brands.resolve(value(p).name,p.code)):filtered.map(p=>[p]);
+ const exportButton=$('#exportFiltered');
+ exportButton.disabled=!list.length;
+ exportButton.onclick=guarded(async()=>{
+   const rows=counterExportRows(list,p=>C933Brands.resolve(value(p).name,p.code),scopeText(s),s.date,copyOffers);
+   download(await exportExcel(rows,'Tra giá tại quầy'),'Tra-gia-'+s.date+'.xlsx');
+ });
  const copyButton=$('#copyFiltered');
  copyButton.disabled=!list.length;
  copyButton.onclick=guarded(()=>copy(staffList(list,scopeText(s),s.date,copyOffers)));
