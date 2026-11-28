@@ -32,7 +32,7 @@ Tìm theo mã, tên hoặc mã tham chiếu. Mở sản phẩm để xem ưu đ�
 
 Trong **Quản lý xác nhận giá**, chọn điều kiện để xem phép tính thử. Nhập giá cuối, điều kiện thực sự cần gửi khách và lý do, sau đó bấm **Lưu xác nhận**. Khi sửa giá, nhập lại số đúng và ghi lý do sửa. Lịch sử giữ cả hai lần. Xác nhận cho toàn cụm khi đang chọn Toàn cụm. Để chốt giá riêng cho shop, nhập hoặc mở bảng riêng của shop đó.
 
-Khi cột H có mức giảm trên giá sau khuyến mãi theo quy tắc được duyệt, giá cuối được tính từ giá khuyến mãi U. Xác nhận thuộc đúng phiên và phạm vi. Phiên mẫu khi nhập qua máy chủ cục bộ có thể nhận xác nhận đi kèm từ thư mục riêng của quản lý. Khớp file bằng SHA-256, sheet, ánh xạ, mã, giá nguồn và ngày áp dụng.
+Khi cột H có mức giảm trên giá sau khuyến mãi theo quy tắc được duyệt, giá cuối được tính từ giá khuyến mãi U. Xác nhận thuộc đúng phiên và phạm vi.
 
 **Copy báo khách** lấy nhãn và giá đang hiển thị. **Copy cho nhân viên** bổ sung mã, nguồn và ghi chú. So sánh hai phiên tại **Lịch sử phiên**. Trong **Bản tin cho shop**, chọn mã bằng ô tìm hoặc nút chọn nhanh, đọc bản xem trước, rồi copy gửi Zalo hoặc xuất Excel.
 

@@ -587,14 +587,19 @@ let workMode='';
 paths.advanced=paths.overview;
 const nav={overview:'Tổng quan',search:'Tra giá tại quầy',import:'Nhập bảng giá',history:'Lịch sử phiên',report:'Phân tích giá',advanced:'Nghiệp vụ nâng cao',news:'Bản tin cho shop'};
 const names={name:'Tên sản phẩm',badge1:'Đặc',badge2:'Quyền',ref:'Mã tham chiếu',time:'Giá trị F gốc',code:'Mã sản phẩm',promo:'Khuyến mãi',spec:'Thông số',labels:'Chỉ tiêu trả chậm',values1:'Số liệu đối tác 1',partner1:'Đối tác 1',partner2:'Đối tác 2',values2:'Số liệu đối tác 2',partner3:'Đối tác 3',values3:'Số liệu đối tác 3',s:'Giá niêm yết',u:'Giá khuyến mãi'};
-let state=await read(),shop=localStorage.shop||state.defaultShop, sid=localStorage.sid||'',tab=state.sessions.length?'search':'import',draft=null,selected=new Set(),q='',filters={},detailCode='',page=0,oldId='',lookup='',seed=null;
-const scopeName=k=>k==='*'?state.cluster+' · Toàn cụm':state.shops.find(x=>x.id===k)?.name+' ('+k+')';
-const bundled=document.querySelector('#bundled-session');
-if(bundled && !state.sessions.length && !state.revision){
- const first=JSON.parse(bundled.textContent);
- state.sessions.push(first);
+let state=await read();
+async function sha256(bytes){
+ const digest=await crypto.subtle.digest('SHA-256',bytes);
+ return Array.from(new Uint8Array(digest),n=>n.toString(16).padStart(2,'0')).join('');
+}
+// Remove only the unchanged session packaged with earlier offline releases.
+const legacy=state.sessions.find(s=>s.id==='9c670684-8d73-444b-b963-4e5d259364ba');
+if(legacy && await sha256(new TextEncoder().encode(JSON.stringify(legacy)))==='552fa89c78c72827dc55da4e3855caac182474d6fbe79e77523168c7c5d67bcb'){
+ state.sessions=state.sessions.filter(s=>s!==legacy);
  await write(state);
 }
+let shop=localStorage.shop||state.defaultShop, sid=localStorage.sid||'',tab=state.sessions.length?'search':'import',draft=null,selected=new Set(),q='',filters={},detailCode='',page=0,oldId='',lookup='';
+const scopeName=k=>k==='*'?state.cluster+' · Toàn cụm':state.shops.find(x=>x.id===k)?.name+' ('+k+')';
 if(state.sessions.length)tab='overview';
 const available=()=>state.sessions.filter(s=>s.scope===shop||s.scope==='*').sort((a,b)=>b.date.localeCompare(a.date)||b.at.localeCompare(a.at));
 const current=()=>available().find(s=>s.id===sid);
@@ -659,20 +664,18 @@ function importView(){
    if(!file)return;
    if(!/\.xlsx$/i.test(file.name))throw Error('Vui lòng chọn file Excel .xlsx.');
    const bytes=await file.arrayBuffer();const wb=await readWorkbook(bytes);
-   const hash=[...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(n=>n.toString(16).padStart(2,'0')).join('');
- try{seed=bundled?JSON.parse(document.querySelector('#bundled-seed').textContent):await (await fetch('./sample.local.json')).json()}catch{seed=null}
- draft={wb,file:file.name,hash,index:0,map:{...mapping},rows:await wb.rows(0),date:seed?.hash===hash?seed.date:date(),name:file.name.replace(/\.xlsx$/i,''),scope:shop};importView()}
+   const hash=await sha256(bytes);
+ draft={wb,file:file.name,hash,index:0,map:{...mapping},rows:await wb.rows(0),date:date(),name:file.name.replace(/\.xlsx$/i,''),scope:shop};importView()}
  if(!draft){$('#preview').innerHTML='<div class="grid"><section class="card"><h2>Kiểm tra dữ liệu</h2><p class="muted">Xem sheet, mã trùng, giá thiếu và các dòng có điều kiện khác nhau trước khi lưu.</p></section><section class="card"><h2>Phạm vi áp dụng</h2><p class="muted">Chọn bảng chung cho toàn cụm hoặc bảng riêng của một shop.</p></section></div>';return}
  const d=draft;Object.assign(d,group(d.rows,d.map));const n=d.stats;
  $('#preview').innerHTML=stats([['Dòng nguồn',n.rows],['Mã duy nhất',n.codes],['Tên khác nhau',n.names],['Dòng lặp',n.duplicates],['Thiếu giá S',n.missingS],['Thiếu giá U',n.missingU],['Mã xung đột',n.conflicts]])+
  '<section class="card"><h2>Kiểm tra nguồn</h2><label>Sheet<select id="sheet">'+d.wb.sheets.map((s,i)=>opt(i,s.name,d.index)).join('')+'</select></label><details><summary>Ánh xạ cột Excel</summary><div class="mapping">'+Object.entries(d.map).map(([k,v])=>'<label>'+names[k]+'<input data-map="'+k+'" value="'+esc(v)+'" maxlength="3"></label>').join('')+'</div></details><div class="scroll"><table><tr><th>Dòng</th><th>Mã G</th><th>Tên sản phẩm</th><th>Giá khuyến mãi</th></tr>'+d.rows.slice(0,4).map(r=>'<tr><td>'+r.row+'</td><td>'+esc(r.cells[d.map.code])+'</td><td>'+esc(r.cells[d.map.name])+'</td><td>'+fmt(money(r.cells[d.map.u]))+'</td></tr>').join('')+'</table></div>'+(n.invalid.length?'<p class="error">Dòng thiếu mã: '+n.invalid.join(', ')+'</p>':'')+'</section>'+
- '<section class="card"><h2>Lưu phiên bảng giá</h2><div class="row">'+input('dname','Tên phiên','text',d.name)+input('ddate','Ngày áp dụng','date',d.date)+'<label>Phạm vi<select id="dscope">'+scopeOpts(d.scope)+'</select></label></div>'+(seed?.hash===d.hash?'<p class="muted">Phiên mẫu ngày '+esc(seed.date)+' có xác nhận quản lý đi kèm. Xác nhận áp dụng cho phạm vi bạn chọn.</p>':'')+'<div class="actions">'+button('commit','Xác nhận và lưu phiên',true)+'</div></section>';
+ '<section class="card"><h2>Lưu phiên bảng giá</h2><div class="row">'+input('dname','Tên phiên','text',d.name)+input('ddate','Ngày áp dụng','date',d.date)+'<label>Phạm vi<select id="dscope">'+scopeOpts(d.scope)+'</select></label></div><div class="actions">'+button('commit','Xác nhận và lưu phiên',true)+'</div></section>';
  on('sheet','change',async e=>{d.index=Number(e.target.value);d.rows=await d.wb.rows(d.index);importView()});
  all('[data-map]').forEach(el=>el.onchange=()=>{const v=el.value.trim().toUpperCase();if(/^[A-Z]{1,3}$/.test(v))d.map[el.dataset.map]=v;importView()});
  for(const [id,k] of [['dname','name'],['ddate','date'],['dscope','scope']])on(id,'input',e=>d[k]=e.target.value);
  click('commit',async()=>{if(!d.date||!d.name.trim()||!n.codes||n.invalid.length)throw Error('Kiểm tra tên phiên, ngày áp dụng và mã ở các dòng nguồn.');if(duplicate(state.sessions,d))throw Error('File đã được nhập cho cùng ngày và phạm vi.');
  const s={id:crypto.randomUUID(),at:new Date().toISOString(),name:d.name.trim(),date:d.date,scope:d.scope,file:d.file,sheet:d.wb.sheets[d.index].name,hash:d.hash,map:{...d.map},products:d.products,stats:d.stats};
- const p=s.products[seed?.code];if(seed?.hash===s.hash&&s.date===seed.date&&s.sheet===seed.sheet&&JSON.stringify(s.map)===JSON.stringify(mapping)&&p&&!p.issues.length&&value(p).s===seed.s&&value(p).u===seed.u)confirmPrice(p,seed.price,seed.condition,seed.reason);
  const prior=state.sessions.filter(x=>x.scope===s.scope&&x.date<=s.date).sort((a,b)=>b.date.localeCompare(a.date)||b.at.localeCompare(a.at))[0];
  if(prior)for(const c of compare(prior,s))if(prior.products[c.code]?.history.length&&s.products[c.code])s.products[c.code].recheck=true;
  state.sessions.push(s);await save();shop=s.scope;sid=s.id;tab='search';draft=null;clear();render();toast('Đã lưu phiên bảng giá')});
